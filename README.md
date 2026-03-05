@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# StoryMagic MVP Comercial
 
-## Getting Started
+Stack: `Next.js + Supabase + Stripe`
 
-First, run the development server:
-
+## Run local
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Required env
+```bash
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+STRIPE_SECRET_KEY=...
+STRIPE_WEBHOOK_SECRET=...
+MERCADOPAGO_ACCESS_TOKEN=...
+# Optional (defaults to https://api.mercadopago.com)
+MERCADOPAGO_API_BASE=...
+# Optional override for notifications
+MERCADOPAGO_WEBHOOK_URL=...
+# mercadopago | stripe (default mercadopago)
+CHECKOUT_PROVIDER=mercadopago
 
-## Learn More
+# FX fallback if fx_rates_daily is empty
+DEFAULT_USD_TO_ARS=1200
 
-To learn more about Next.js, take a look at the following resources:
+# Gemini (text + image)
+GEMINI_API_KEY=...
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Optional image model override
+# For cheaper image generation flow (Nano Banana / Flash style)
+GEMINI_IMAGE_MODEL=gemini-3.1-flash
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Product analytics (optional, no-op if missing)
+NEXT_PUBLIC_POSTHOG_KEY=...
+NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+```
 
-## Deploy on Vercel
+## Commercial flow
+1. `POST /api/orders` creates draft + personalization.
+2. `POST /api/orders/quote` creates quote with FX snapshot.
+3. `POST /api/checkout/session` creates Stripe checkout.
+4. Stripe webhook (`/api/webhooks/stripe`) transitions payment and triggers generation.
+5. Generation writes `generated_pages`, `digital_assets`, `order_events`.
+6. User consumes assets at:
+   - Viewer: `/cuento/:id/leer`
+   - PDF: `/api/orders/:id/digital-pdf`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Backoffice
+- `/admin/fx-rates`
+- `/admin/print-jobs`
+- `/admin/metrics`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Smoke E2E
+```bash
+npm run build
+npm run test:e2e
+```
+
+## Funnel events (PostHog)
+- `landing_view`
+- `landing_cta_click`
+- `wizard_step_view`
+- `wizard_step_completed`
+- `wizard_step_blocked`
+- `preview_generated`
+- `checkout_started`
+- `checkout_redirected`
+- `checkout_error`
+- `auth_redirect_required`
