@@ -36,9 +36,18 @@ type AppEnv = z.infer<typeof envSchema>;
 let cachedEnv: AppEnv | null = null;
 let validatedProduction = false;
 
+function normalizeEnv(source: NodeJS.ProcessEnv) {
+  return Object.fromEntries(
+    Object.entries(source).map(([key, value]) => [
+      key,
+      typeof value === "string" ? value.trim() : value,
+    ]),
+  );
+}
+
 function readEnv(): AppEnv {
   if (cachedEnv) return cachedEnv;
-  cachedEnv = envSchema.parse(process.env);
+  cachedEnv = envSchema.parse(normalizeEnv(process.env));
   return cachedEnv;
 }
 
@@ -168,9 +177,6 @@ export function validateProductionEnvironment() {
   requireValue(env.NEXT_PUBLIC_SUPABASE_URL, "NEXT_PUBLIC_SUPABASE_URL");
   requireValue(env.NEXT_PUBLIC_SUPABASE_ANON_KEY, "NEXT_PUBLIC_SUPABASE_ANON_KEY");
   requireValue(env.SUPABASE_SERVICE_ROLE_KEY, "SUPABASE_SERVICE_ROLE_KEY");
-  requireValue(env.STRIPE_SECRET_KEY, "STRIPE_SECRET_KEY");
-  requireValue(env.STRIPE_WEBHOOK_SECRET, "STRIPE_WEBHOOK_SECRET");
-  requireValue(env.GEMINI_API_KEY ?? env.GOOGLE_AI_API_KEY, "GEMINI_API_KEY");
 
   validatedProduction = true;
 }
