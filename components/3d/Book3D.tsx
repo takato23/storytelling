@@ -3,7 +3,6 @@
 import React, { useRef, useState, useEffect } from "react"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import {
-    Environment,
     Float,
     PresentationControls,
     ContactShadows,
@@ -437,8 +436,6 @@ function BookScene({
                 color="#FFFFFF"
             />
             <pointLight position={[-5, 5, 5]} intensity={0.3} color="#FF6B6B" />
-
-            <Environment preset="city" />
 
             <ContactShadows
                 position={[0, -3.5, 0]}

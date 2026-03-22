@@ -4,6 +4,13 @@ interface GeneratedPageRow {
   page_number: number;
   prompt_used: string | null;
   image_url?: string | null;
+  page_type?: string | null;
+  render_purpose?: string | null;
+  width_px?: number | null;
+  height_px?: number | null;
+  status?: string | null;
+  version?: number | null;
+  error_message?: string | null;
 }
 
 interface StoredPagePayload {

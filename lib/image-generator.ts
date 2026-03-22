@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getGeminiConfig } from "@/lib/config";
 
 interface GenerateImageInput {
   prompt: string;
@@ -30,7 +31,7 @@ export interface StickerPreviewQualityResult {
 }
 
 function getApiKey() {
-  return process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || null;
+  return getGeminiConfig().apiKey;
 }
 
 function stripBase64Prefix(value: string) {
@@ -38,11 +39,11 @@ function stripBase64Prefix(value: string) {
 }
 
 function getImageModel() {
-  return process.env.GEMINI_IMAGE_MODEL || process.env.NANO_BANANA_MODEL || "gemini-3.1-flash";
+  return getGeminiConfig().imageModel;
 }
 
 function getQualityModel() {
-  return process.env.GEMINI_QUALITY_MODEL || process.env.GEMINI_TEXT_MODEL || "gemini-2.0-flash";
+  return getGeminiConfig().qualityModel;
 }
 
 function extractInlineImageData(candidates: Array<unknown> | undefined) {

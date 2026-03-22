@@ -7,7 +7,7 @@ export function TrustStrip({ className = "" }: { className?: string }) {
     const items = [
         {
             icon: Star,
-            text: "Historias personalizadas con IA",
+            text: "Preview antes de pagar",
             iconColor: "text-amber-800",
             iconBg: "linear-gradient(135deg, #fff8dc, #ffd166)",
             pillBorder: "#e4dcf2",
@@ -23,7 +23,7 @@ export function TrustStrip({ className = "" }: { className?: string }) {
         },
         {
             icon: Shield,
-            text: "Checkout seguro con Stripe",
+            text: "Checkout seguro y protegido",
             iconColor: "text-violet-900",
             iconBg: "linear-gradient(135deg, #f2ecff, #cfbfff)",
             pillBorder: "#e6ddfa",
@@ -31,7 +31,7 @@ export function TrustStrip({ className = "" }: { className?: string }) {
         },
         {
             icon: Heart,
-            text: "Equipo humano para ayudarte",
+            text: "Soporte humano para ayudarte",
             iconColor: "text-rose-800",
             iconBg: "linear-gradient(135deg, #ffe8ef, #ffb7c4)",
             pillBorder: "#f3dde2",
@@ -42,13 +42,13 @@ export function TrustStrip({ className = "" }: { className?: string }) {
     return (
         <div className={`w-full relative z-10 pt-3 pb-3 ${className}`}>
             <div className="container mx-auto px-4">
-                <div className="rounded-[1rem] border border-[#e6deef] bg-[#fdfcff] px-2 py-3">
-                    <div className="flex flex-wrap justify-center items-center gap-2 md:gap-3 text-[10px] md:text-[11px] font-semibold tracking-[0.11em] uppercase text-[#2a2447]">
+                <div className="surface-panel rounded-[28px] px-2 py-3">
+                    <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] font-semibold uppercase tracking-[0.11em] text-[var(--text-primary)] md:gap-3 md:text-[11px]">
                     {items.map((item, index) => (
                         <React.Fragment key={index}>
                             <div
-                                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-white border border-opacity-90 shadow-[0_5px_16px_-12px_rgba(43,34,84,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_18px_-10px_rgba(43,34,84,0.3)] cursor-default"
-                                style={{ borderColor: item.pillBorder, background: `linear-gradient(180deg, ${item.pillHover}, #ffffff)` }}
+                                className="surface-chip inline-flex cursor-default items-center gap-2 rounded-full px-3.5 py-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_18px_-10px_rgba(43,34,84,0.3)]"
+                                style={{ borderColor: item.pillBorder, background: `linear-gradient(180deg, ${item.pillHover}, var(--surface-strong))` }}
                             >
                                 <span
                                     className="grid place-items-center w-7 h-7 rounded-full border border-white/70 shadow-sm"
@@ -60,7 +60,7 @@ export function TrustStrip({ className = "" }: { className?: string }) {
                             </div>
                             {/* Separator dot (hidden on small screens where they wrap) */}
                             {index < items.length - 1 && (
-                                <span className="hidden md:block w-1.5 h-1.5 rounded-full bg-[#bfb0de] mt-1" />
+                                <span className="mt-1 hidden h-1.5 w-1.5 rounded-full bg-[var(--border-strong)] md:block" />
                             )}
                         </React.Fragment>
                     ))}

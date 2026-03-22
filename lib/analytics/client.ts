@@ -1,9 +1,9 @@
 "use client";
 
 import posthog from "posthog-js";
+import { getAnalyticsConfig } from "@/lib/config";
 
-const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";
+const { posthogKey: POSTHOG_KEY, posthogHost: POSTHOG_HOST } = getAnalyticsConfig();
 
 let initialized = false;
 

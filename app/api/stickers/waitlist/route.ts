@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { handleRouteError } from "@/lib/api";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { getRequestId, logEvent, setRequestIdHeader } from "@/lib/observability";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 
@@ -9,10 +10,17 @@ const StickerWaitlistSchema = z.object({
   email: z.string().trim().email().max(180),
 });
 
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
   const route = "/api/stickers/waitlist";
   try {
+    const limited = enforceRateLimit(request, { key: route, limit: 6, windowMs: 60_000 });
+    if (limited) {
+      return setRequestIdHeader(limited, requestId);
+    }
+
     const payload = StickerWaitlistSchema.parse(await request.json());
     const adminClient = createSupabaseAdminClient();
 

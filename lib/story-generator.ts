@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
+import { getEnv, getGeminiConfig } from "@/lib/config";
 import { GEMINI_CONFIG } from "@/lib/gemini-config";
 import { buildPersonalizedStory } from "@/lib/digital-story";
 
@@ -33,7 +34,7 @@ const ResponseSchema = z.object({
 });
 
 function getApiKey() {
-  return process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || null;
+  return getGeminiConfig().apiKey;
 }
 
 function getPrompt(input: GenerateStoryInput) {
@@ -87,7 +88,7 @@ export async function generateStoryPages(input: GenerateStoryInput): Promise<Gen
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_TEXT_MODEL || GEMINI_CONFIG.models.text,
+      model: getEnv().GEMINI_TEXT_MODEL || GEMINI_CONFIG.models.text,
     });
 
     const prompt = getPrompt(input);

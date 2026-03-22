@@ -24,11 +24,11 @@ export function CharacterStep({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
             >
-                <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-indigo-600/85 mb-3">Paso 2 de 6</p>
-                <h2 className="text-3xl md:text-4xl font-serif text-charcoal-900 mb-2">
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-[var(--play-primary)] mb-3">Paso 2 de 4</p>
+                <h2 className="play-title text-3xl md:text-4xl mb-2">
                     Cuéntanos sobre tu pequeño
                 </h2>
-                <p className="text-charcoal-600">
+                <p className="play-copy">
                     Esta información define cómo aparecerá en la historia.
                 </p>
             </motion.div>

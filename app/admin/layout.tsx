@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
+import { AdminShell } from "@/components/admin/AdminShell";
 import { hasSupabaseCredentials } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -26,5 +27,5 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
     redirect("/cuenta/pedidos");
   }
 
-  return <>{children}</>;
+  return <AdminShell>{children}</AdminShell>;
 }

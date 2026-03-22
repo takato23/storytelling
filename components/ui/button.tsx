@@ -10,12 +10,12 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ({ className, variant = "default", size = "default", ...props }, ref) => {
         const variants = {
-            default: "bg-coral-500 text-white hover:bg-coral-600 shadow-sm",
+            default: "public-button-primary shadow-sm",
             destructive: "bg-red-500 text-white hover:bg-red-600 shadow-sm",
-            outline: "border border-charcoal-200 bg-white hover:bg-charcoal-100 text-charcoal-900",
-            secondary: "bg-charcoal-100 text-charcoal-900 hover:bg-charcoal-200",
-            ghost: "hover:bg-charcoal-100 hover:text-charcoal-900",
-            link: "text-charcoal-900 underline-offset-4 hover:underline",
+            outline: "public-button-secondary",
+            secondary: "surface-chip hover:bg-[var(--surface-elevated)] text-[var(--text-primary)]",
+            ghost: "hover:bg-[var(--surface-base)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
+            link: "public-link underline-offset-4 hover:underline",
         }
 
         const sizes = {
@@ -28,7 +28,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         return (
             <button
                 className={cn(
-                    "inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-charcoal-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+                    "inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
                     variants[variant],
                     sizes[size],
                     className

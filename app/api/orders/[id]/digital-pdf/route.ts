@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { handleRouteError } from "@/lib/api";
 import { ApiError, requireAuthenticatedUser } from "@/lib/auth";
-import { buildPersonalizedStory, storyToPdfLines } from "@/lib/digital-story";
+import { storyToPdfLines } from "@/lib/digital-story";
 import { rowsToStoryPages } from "@/lib/generated-pages";
 import { buildSimplePdf } from "@/lib/pdf";
 import { createSupabaseAdminClient } from "@/lib/supabase";
@@ -38,21 +38,26 @@ export async function GET(_request: Request, context: RouteContext) {
       }
     }
 
-    const allowedStatuses = new Set(["ready_digital", "print_queued", "in_production", "packed", "shipped", "delivered"]);
+    const allowedStatuses = new Set([
+      "ready_digital",
+      "qa_pending",
+      "ready_print_assets",
+      "qa_failed",
+      "print_queued",
+      "in_production",
+      "packed",
+      "shipped",
+      "delivered",
+    ]);
     if (!allowedStatuses.has(String(order.status))) {
       throw new ApiError(409, "digital_not_ready", "Digital asset not ready yet");
     }
 
-    const [{ data: item }, { data: personalization }, { data: generatedRows }] = await Promise.all([
+    const [{ data: item }, { data: generatedRows }] = await Promise.all([
       adminClient.from("order_items").select("story_id").eq("order_id", id).limit(1).maybeSingle(),
       adminClient
-        .from("personalizations")
-        .select("child_profile,personalization_payload")
-        .eq("order_id", id)
-        .maybeSingle(),
-      adminClient
         .from("generated_pages")
-        .select("page_number,prompt_used,image_url")
+        .select("page_number,prompt_used,image_url,status")
         .eq("order_id", id)
         .order("page_number", { ascending: true }),
     ]);
@@ -62,24 +67,11 @@ export async function GET(_request: Request, context: RouteContext) {
       : { data: null };
 
     const storyTitle = (story?.title ?? "Historia personalizada").toString();
-    const childProfile = personalization?.child_profile as Record<string, unknown> | null;
-    const payload = personalization?.personalization_payload as Record<string, unknown> | null;
+    if (!generatedRows || generatedRows.length === 0) {
+      throw new ApiError(409, "digital_not_ready", "Digital asset not ready yet");
+    }
 
-    const childName = String(childProfile?.name ?? childProfile?.child_name ?? "Peque aventurero");
-    const readingLevel = typeof payload?.reading_level === "string" ? payload.reading_level : null;
-    const familyMembers = Array.isArray(payload?.family_members)
-      ? (payload?.family_members as Array<{ name?: string }>)
-      : [];
-
-    const pages =
-      generatedRows && generatedRows.length > 0
-        ? rowsToStoryPages(generatedRows)
-        : buildPersonalizedStory({
-            childName,
-            storyTitle,
-            readingLevel,
-            familyMembers,
-          });
+    const pages = rowsToStoryPages(generatedRows);
 
     const lines = [
       `Orden: ${String(order.id).slice(0, 8)}`,

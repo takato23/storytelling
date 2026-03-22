@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react"
 import { motion } from "framer-motion"
-import { CheckCircle2, Clock3, Loader2, ShieldCheck, Sparkles, Truck } from "lucide-react"
+import { AlertCircle, CheckCircle2, Clock3, Loader2, ShieldCheck, Sparkles, Truck } from "lucide-react"
 import { AlchemistLoading } from "@/components/story-wizard/AlchemistLoading"
 import { FlipbookPreview } from "@/components/story-wizard/FlipbookPreview"
 import { PrintConfigurator, PrintConfig } from "@/components/features/print/PrintConfigurator"
@@ -11,12 +11,7 @@ import { ReadingLevel } from "@/components/features/education/ReadingLevelSelect
 import { useRouter } from "next/navigation"
 import { captureEvent } from "@/lib/analytics/events"
 
-const ART_STYLES = [
-    { id: "pixar", name: "Pixar 3D", image: "/stories/space-1.jpg" },
-    { id: "watercolor", name: "Acuarela", image: "/stories/forest-1.jpg" },
-    { id: "vector", name: "Vector Moderno", image: "/stories/soccer-1.jpg" },
-    { id: "cartoon", name: "Caricatura", image: "/stories/dino-1.jpg" },
-]
+const PIXAR_STYLE = { id: "pixar", name: "Pixar 3D", image: "/stories/space-1.jpg" }
 
 interface PreviewStepProps {
     data: {
@@ -51,6 +46,7 @@ interface PreviewStepProps {
         imageUrl: string
         sceneText: string
     } | null
+    previewError: string | null
 }
 
 interface ShippingAddressForm {
@@ -97,9 +93,10 @@ export function PreviewStep({
     onPrintConfigChange,
     isGenerating,
     generatedPreview,
+    previewError,
 }: PreviewStepProps) {
     const story = STORIES.find((s) => s.id === data.selectedStory)
-    const style = ART_STYLES.find((s) => s.id === data.selectedStyle)
+    const style = PIXAR_STYLE
     const previewUrl = generatedPreview?.imageUrl ?? null
     const familyCount = data.familyMembers?.length || 0
     const [format, setFormat] = useState<"digital" | "print">("print")
@@ -146,8 +143,16 @@ export function PreviewStep({
     const deliveryCopy = format === "print"
         ? `Digital inmediato + impreso ${quotePreview?.shippingEtaDays ? `${quotePreview.shippingEtaDays} días` : "5-10 días"}`
         : "Entrega digital inmediata"
-    const checkoutLabel = format === "print" ? "Pagar Libro Impreso + Digital" : "Pagar Versión Digital"
+    const checkoutLabel = format === "print" ? "Pagar Impresión" : "Pagar Descarga online"
     const checkoutCtaAmount = formatCurrency(total, currency)
+    const formatDetailLabel = format === "print" && story
+        ? `${story.printSpecs.format} · ${story.printSpecs.size}`
+        : "Versión digital"
+    const shippingValueLabel = format === "digital"
+        ? "Incluido"
+        : quotePreview?.currency === currency
+            ? formatCurrency(shipping, currency)
+            : "Cotizar envío"
 
     const flipbookPages = useMemo(() => {
         if (!story) return []
@@ -305,136 +310,96 @@ export function PreviewStep({
     }
 
     return (
-        <div className="max-w-6xl mx-auto space-y-8">
+        <div className="mx-auto max-w-[1380px] space-y-5">
             <motion.div className="text-center" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-indigo-600/85 mb-3">Paso final</p>
-                <h2 className="text-3xl md:text-4xl font-serif text-charcoal-900 mb-2">
-                    Tu cuento <span className="wizard-gradient-text">está listo</span> para crearse
+                <p className="mb-3 text-[11px] font-extrabold uppercase tracking-[0.22em] text-[var(--play-primary)]">Paso final</p>
+                <h2 className="play-title text-3xl md:text-4xl">
+                    Resumen de tu <span className="text-[var(--play-primary)] italic">obra maestra</span>
                 </h2>
-                <p className="text-charcoal-600 max-w-2xl mx-auto">
-                    Revisa formato, dirección de envío y total antes de ir al checkout.
+                <p className="play-copy mx-auto mt-2 max-w-2xl">
+                    Revisa preview, formato y total antes de llevar la magia al checkout.
                 </p>
             </motion.div>
 
-            <motion.div
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="wizard-liquid-shell wizard-liquid-sheen rounded-3xl p-4 md:p-6"
-            >
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-4 px-1">
-                    <p className="text-sm font-semibold text-charcoal-700">Vista previa inmersiva</p>
-                    <div className="wizard-liquid-pill px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-[0.15em] text-indigo-700">
-                        {story?.title || "Tu Cuento"}
-                    </div>
-                </div>
-                {isGenerating ? (
-                    <AlchemistLoading />
-                ) : (
-                    <FlipbookPreview title={story?.title || "Tu Cuento"} pages={flipbookPages} />
-                )}
-            </motion.div>
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_340px] xl:items-start">
+                <div className="space-y-6">
+                    <motion.div
+                        initial={{ opacity: 0, y: 18 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="play-panel overflow-hidden p-4 md:p-5"
+                    >
+                        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 px-1">
+                            <p className="text-sm font-semibold text-[var(--play-text-main)]">Vista previa del cuento</p>
+                            <div className="play-pill px-3 py-1.5 text-[11px]">
+                                {story?.title || "Tu cuento"}
+                            </div>
+                        </div>
+                        {isGenerating ? (
+                            <AlchemistLoading />
+                        ) : (
+                            <FlipbookPreview title={story?.title || "Tu Cuento"} pages={flipbookPages} />
+                        )}
+                        {previewError && (
+                            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                                <div className="flex items-start gap-3">
+                                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                                    <p>{previewError}</p>
+                                </div>
+                            </div>
+                        )}
+                    </motion.div>
 
-            <motion.div
-                className="wizard-liquid-shell wizard-liquid-sheen wizard-noise rounded-3xl p-5 md:p-7"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-            >
-                <div className="grid lg:grid-cols-2 gap-8 md:gap-10">
-                    <div className="space-y-4 md:space-y-5">
-                        <div className="wizard-liquid-panel rounded-2xl p-5 md:p-6">
-                            <div className="flex items-center gap-4">
+                    <div className="grid gap-3 md:grid-cols-3">
+                        <div className="play-card p-4">
+                            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.16em] text-[var(--play-primary)]">Protagonista</p>
+                            <div className="flex items-center gap-3">
                                 {previewUrl ? (
-                                    <div className="relative w-24 h-24 rounded-2xl overflow-hidden shrink-0 shadow-md ring-2 ring-white">
-                                        <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-indigo-900/20 to-transparent" />
+                                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl shadow-sm">
+                                        <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
                                     </div>
                                 ) : (
-                                    <div className="w-24 h-24 rounded-2xl shrink-0 bg-gradient-to-br from-indigo-100 to-cyan-100 border border-indigo-100 flex items-center justify-center">
-                                        <Sparkles className="w-9 h-9 text-indigo-500" />
+                                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[var(--play-surface-low)] text-[var(--play-primary)]">
+                                        <Sparkles className="h-7 w-7" />
                                     </div>
                                 )}
                                 <div>
-                                    <h3 className="text-xl font-bold text-charcoal-900 mb-1">{data.childName || "Protagonista"}</h3>
-                                    <p className="text-charcoal-500 text-sm md:text-base">{data.childAge} años</p>
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                        <span className="text-xs font-bold px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100">
-                                            Nivel {readingLevelLabel}
-                                        </span>
-                                        {familyCount > 0 && (
-                                            <span className="text-xs font-bold px-3 py-1 bg-cyan-50 text-cyan-700 rounded-full border border-cyan-100">
-                                                +{familyCount} familiares
-                                            </span>
-                                        )}
-                                    </div>
+                                    <h3 className="text-base font-black text-[var(--play-text-main)]">{data.childName || "Pendiente"}</h3>
+                                    <p className="text-sm font-medium text-[var(--play-text-muted)]">{data.childAge} años</p>
+                                    <p className="mt-1 text-xs font-bold text-[var(--play-primary)]">Nivel {readingLevelLabel}</p>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="grid sm:grid-cols-2 gap-3">
-                            <div className="wizard-liquid-soft rounded-xl border border-white/80 p-4 flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-lg overflow-hidden shadow-sm shrink-0">
-                                    <img src={story?.coverImage} alt={story?.title} className="w-full h-full object-cover" />
+                        <div className="play-card p-4">
+                            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.16em] text-[var(--play-primary)]">Historia</p>
+                            <div className="flex items-center gap-3">
+                                <div className="h-14 w-14 overflow-hidden rounded-2xl shadow-sm">
+                                    <img src={story?.coverImage} alt={story?.title} className="h-full w-full object-cover" />
                                 </div>
                                 <div>
-                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-500/90">Historia</p>
-                                    <h4 className="font-bold text-charcoal-900 text-sm leading-tight">{story?.title}</h4>
+                                    <h4 className="text-base font-black leading-tight text-[var(--play-text-main)]">{story?.title}</h4>
+                                    <p className="text-sm font-medium text-[var(--play-text-muted)]">{story?.ages}</p>
                                 </div>
                             </div>
+                        </div>
 
-                            <div className="wizard-liquid-soft rounded-xl border border-white/80 p-4 flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-lg overflow-hidden shadow-sm shrink-0">
-                                    <img src={style?.image} alt={style?.name} className="w-full h-full object-cover" />
+                        <div className="play-card p-4">
+                            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.16em] text-[var(--play-primary)]">Estilo</p>
+                            <div className="flex items-center gap-3">
+                                <div className="h-14 w-14 overflow-hidden rounded-2xl shadow-sm">
+                                    <img src={style?.image} alt={style?.name} className="h-full w-full object-cover" />
                                 </div>
                                 <div>
-                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-600/90">Estilo</p>
-                                    <h4 className="font-bold text-charcoal-900 text-sm leading-tight">{style?.name || "Personalizado"}</h4>
+                                    <h4 className="text-base font-black text-[var(--play-text-main)]">{style?.name || "Personalizado"}</h4>
+                                    <p className="text-sm font-medium text-[var(--play-text-muted)]">
+                                        {familyCount > 0 ? `+${familyCount} familiares` : "Hasta 2 previews gratis"}
+                                    </p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="space-y-5 md:space-y-6">
-                        <div className="wizard-liquid-soft p-1.5 rounded-2xl flex border border-white/75">
-                            <button
-                                onClick={() => setFormat("digital")}
-                                className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${format === "digital"
-                                    ? "bg-white text-indigo-600 shadow-sm ring-1 ring-black/5"
-                                    : "text-charcoal-500 hover:text-charcoal-700 hover:bg-white/50"
-                                    }`}
-                            >
-                                Solo Digital
-                            </button>
-                            <button
-                                onClick={() => setFormat("print")}
-                                className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${format === "print"
-                                    ? "bg-white text-cyan-600 shadow-sm ring-1 ring-black/5"
-                                    : "text-charcoal-500 hover:text-charcoal-700 hover:bg-white/50"
-                                    }`}
-                            >
-                                Físico + Digital
-                            </button>
-                        </div>
-
-                        <div className="wizard-liquid-soft rounded-2xl border border-white/75 p-1.5">
-                            <div className="grid grid-cols-2 gap-2">
-                                {(["ARS", "USD"] as const).map((currencyOption) => (
-                                    <button
-                                        key={currencyOption}
-                                        onClick={() => setCurrency(currencyOption)}
-                                        className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${currency === currencyOption
-                                            ? "bg-white text-indigo-900 shadow-sm ring-1 ring-black/5"
-                                            : "text-charcoal-500 hover:bg-white/50"
-                                            }`}
-                                    >
-                                        {currencyOption}
-                                    </button>
-                                ))}
-                            </div>
-                            <p className="mt-2 text-xs text-charcoal-500">
-                                El monto final se confirma en checkout con snapshot de FX del día.
-                            </p>
-                        </div>
-
+                    <div className="space-y-4">
                         {format === "print" ? (
                             <>
                                 <PrintConfigurator
@@ -442,143 +407,197 @@ export function PreviewStep({
                                     onChange={onPrintConfigChange}
                                     basePrice={story?.printPriceArs ?? 29990}
                                 />
-                                <div className="wizard-liquid-panel rounded-2xl p-5 space-y-4">
-                                    <h4 className="text-sm font-bold uppercase tracking-wide text-charcoal-700">Datos de envío</h4>
-                                    <div className="grid sm:grid-cols-2 gap-3">
+
+                                <div className="play-panel p-5">
+                                    <h4 className="mb-4 text-sm font-black uppercase tracking-[0.16em] text-[var(--play-primary)]">Datos de envío</h4>
+                                    <div className="grid gap-3 lg:grid-cols-3">
                                         <input
                                             value={shippingAddress.recipientName}
                                             onChange={(event) => setShippingAddress((prev) => ({ ...prev, recipientName: event.target.value }))}
                                             placeholder="Nombre y apellido"
-                                            className="rounded-xl border border-charcoal-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                            className="form-field lg:col-span-2"
                                         />
                                         <input
                                             value={shippingAddress.phone}
                                             onChange={(event) => setShippingAddress((prev) => ({ ...prev, phone: event.target.value }))}
                                             placeholder="Teléfono (opcional)"
-                                            className="rounded-xl border border-charcoal-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                            className="form-field"
                                         />
                                         <input
                                             value={shippingAddress.line1}
                                             onChange={(event) => setShippingAddress((prev) => ({ ...prev, line1: event.target.value }))}
                                             placeholder="Calle y número"
-                                            className="rounded-xl border border-charcoal-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 sm:col-span-2"
+                                            className="form-field lg:col-span-3"
                                         />
                                         <input
                                             value={shippingAddress.line2}
                                             onChange={(event) => setShippingAddress((prev) => ({ ...prev, line2: event.target.value }))}
                                             placeholder="Piso, depto (opcional)"
-                                            className="rounded-xl border border-charcoal-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 sm:col-span-2"
+                                            className="form-field lg:col-span-3"
                                         />
                                         <input
                                             value={shippingAddress.city}
                                             onChange={(event) => setShippingAddress((prev) => ({ ...prev, city: event.target.value }))}
                                             placeholder="Ciudad"
-                                            className="rounded-xl border border-charcoal-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                            className="form-field"
                                         />
                                         <input
                                             value={shippingAddress.state}
                                             onChange={(event) => setShippingAddress((prev) => ({ ...prev, state: event.target.value }))}
                                             placeholder="Provincia"
-                                            className="rounded-xl border border-charcoal-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                            className="form-field"
                                         />
                                         <input
                                             value={shippingAddress.postalCode}
                                             onChange={(event) => setShippingAddress((prev) => ({ ...prev, postalCode: event.target.value }))}
                                             placeholder="Código postal"
-                                            className="rounded-xl border border-charcoal-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                            className="form-field"
                                         />
                                         <input
                                             value={shippingAddress.countryCode}
                                             onChange={(event) => setShippingAddress((prev) => ({ ...prev, countryCode: event.target.value.toUpperCase() }))}
                                             placeholder="País (AR)"
-                                            className="rounded-xl border border-charcoal-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                            className="form-field"
                                             maxLength={2}
                                         />
                                     </div>
                                 </div>
                             </>
                         ) : (
-                            <div className="wizard-liquid-panel rounded-3xl p-7 text-center">
-                                <div className="w-20 h-20 bg-gradient-to-br from-indigo-100 to-white text-indigo-500 rounded-full flex items-center justify-center mx-auto mb-5 shadow-sm border border-indigo-100">
-                                    <Sparkles className="w-10 h-10" />
-                                </div>
-                                <h3 className="text-xl font-bold text-charcoal-900 mb-2">Versión Digital Mágica</h3>
-                                <p className="text-charcoal-600 mb-6 max-w-sm mx-auto">
-                                    PDF en alta resolución + lectura web interactiva para tablet y móvil.
-                                </p>
-                                <div className="text-4xl font-extrabold text-charcoal-900 tracking-tight">
-                                    {checkoutCtaAmount}
+                            <div className="play-panel p-6">
+                                <div className="mx-auto max-w-xl text-center">
+                                    <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--play-primary-container)]/20 text-[var(--play-primary)]">
+                                        <Sparkles className="h-10 w-10" />
+                                    </div>
+                                    <h3 className="mb-2 text-2xl font-black text-[var(--play-text-main)]">Versión digital mágica</h3>
+                                    <p className="mb-6 text-[var(--play-text-muted)]">
+                                        PDF en alta resolución y lectura web interactiva para tablet y móvil.
+                                    </p>
+                                    <div className="text-4xl font-black tracking-tight text-[var(--play-text-main)]">
+                                        {checkoutCtaAmount}
+                                    </div>
                                 </div>
                             </div>
                         )}
+                    </div>
+                </div>
 
-                        <div className="wizard-liquid-panel rounded-2xl p-5 space-y-3">
-                            <h4 className="text-sm font-bold uppercase tracking-wide text-charcoal-700">Resumen de compra</h4>
-                            <div className="space-y-2 text-sm text-charcoal-600">
-                                <div className="flex items-center justify-between">
-                                    <span>{format === "print" ? "Libro personalizado" : "Versión digital"}</span>
-                                    <span className="font-semibold text-charcoal-800">{formatCurrency(subtotal, currency)}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span>Envío</span>
-                                    <span className="font-semibold text-charcoal-800">
-                                        {format === "digital" ? "Incluido" : formatCurrency(shipping, currency)}
-                                    </span>
-                                </div>
-                                <div className="border-t border-charcoal-100/70 pt-2 flex items-center justify-between text-base">
-                                    <span className="font-semibold text-charcoal-900">Total estimado</span>
-                                    <span className="font-extrabold text-charcoal-900">{checkoutCtaAmount}</span>
-                                </div>
-                            </div>
-                            <div className="rounded-xl border border-indigo-100/80 bg-gradient-to-r from-indigo-50/80 to-cyan-50/65 px-3 py-2 text-xs text-indigo-700 font-medium">
-                                {format === "print"
-                                    ? "El envío se calcula por CP/provincia."
-                                    : "Monto final confirmado en checkout."}
+                <motion.aside
+                    className="space-y-3 xl:sticky xl:top-28"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                >
+                    <div className="play-panel p-4">
+                        <h4 className="mb-4 text-sm font-black uppercase tracking-[0.16em] text-[var(--play-primary)]">Formato</h4>
+                        <div className="rounded-2xl bg-[var(--play-surface-low)] p-1.5">
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    onClick={() => setFormat("digital")}
+                                    className={`rounded-xl px-3 py-3 text-sm font-bold transition ${format === "digital"
+                                        ? "bg-white text-[var(--play-primary)] shadow-sm"
+                                        : "text-[var(--play-text-muted)]"
+                                        }`}
+                                >
+                                    Descarga online
+                                </button>
+                                <button
+                                    onClick={() => setFormat("print")}
+                                    className={`rounded-xl px-3 py-3 text-sm font-bold transition ${format === "print"
+                                        ? "bg-white text-[var(--play-primary)] shadow-sm"
+                                        : "text-[var(--play-text-muted)]"
+                                        }`}
+                                >
+                                    Impresión
+                                </button>
                             </div>
                         </div>
+                    </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                            <div className="wizard-liquid-soft rounded-xl border border-emerald-100 bg-emerald-50/75 px-3 py-2 text-emerald-800 flex items-center gap-2">
-                                <Clock3 className="w-4 h-4" />
-                                {deliveryCopy}
+                    <div className="play-panel p-4">
+                        <h4 className="mb-4 text-sm font-black uppercase tracking-[0.16em] text-[var(--play-primary)]">Moneda</h4>
+                        <div className="rounded-2xl bg-[var(--play-surface-low)] p-1.5">
+                            <div className="grid grid-cols-2 gap-2">
+                                {(["ARS", "USD"] as const).map((currencyOption) => (
+                                    <button
+                                        key={currencyOption}
+                                        onClick={() => setCurrency(currencyOption)}
+                                        className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${currency === currencyOption
+                                            ? "bg-white text-[var(--play-text-main)] shadow-sm"
+                                            : "text-[var(--play-text-muted)]"
+                                            }`}
+                                    >
+                                        {currencyOption}
+                                    </button>
+                                ))}
                             </div>
-                            <div className="wizard-liquid-soft rounded-xl border border-indigo-100 bg-indigo-50/75 px-3 py-2 text-indigo-800 flex items-center gap-2">
-                                <ShieldCheck className="w-4 h-4" />
-                                Checkout seguro
+                        </div>
+                        <p className="mt-3 text-xs font-medium text-[var(--play-text-muted)]">
+                            El total final se confirma al iniciar el checkout.
+                        </p>
+                    </div>
+
+                    <div className="play-panel p-4">
+                        <h4 className="mb-4 text-sm font-black uppercase tracking-[0.16em] text-[var(--play-primary)]">Tu pedido mágico</h4>
+                        <div className="space-y-3 text-sm font-medium text-[var(--play-text-muted)]">
+                            <div className="flex items-center justify-between">
+                                <span>Subtotal</span>
+                                <span className="font-bold text-[var(--play-text-main)]">{formatCurrency(subtotal, currency)}</span>
                             </div>
-                            <div className="wizard-liquid-soft rounded-xl border border-cyan-100 bg-cyan-50/75 px-3 py-2 text-cyan-800 flex items-center gap-2">
-                                {format === "print" ? <Truck className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-                                Seguimiento completo del pedido
+                            <div className="flex items-center justify-between">
+                                <span>Formato</span>
+                                <span className="font-bold text-[var(--play-text-main)]">{formatDetailLabel}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span>Envío</span>
+                                <span className="font-bold text-[var(--play-text-main)]">{shippingValueLabel}</span>
+                            </div>
+                            <div className="border-t border-[var(--play-outline)] pt-3 flex items-center justify-between text-base">
+                                <span className="font-bold text-[var(--play-text-main)]">Total estimado</span>
+                                <span className="text-2xl font-black text-[var(--play-text-main)]">{checkoutCtaAmount}</span>
                             </div>
                         </div>
 
                         <motion.button
                             onClick={handleCheckout}
                             disabled={isCheckingOut}
-                            className="w-full py-4 bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-500 text-white rounded-xl font-bold text-lg flex items-center justify-center gap-2 shadow-[0_20px_40px_-22px_rgba(79,70,229,0.9)] hover:shadow-[0_24px_46px_-24px_rgba(79,70,229,0.95)] transition-shadow disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="gummy-button play-secondary-button mt-6 flex w-full items-center justify-center gap-2 px-6 py-4 text-lg disabled:cursor-not-allowed disabled:opacity-60"
                             whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.98 }}
                         >
                             {isCheckingOut ? (
                                 <>
-                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    <Loader2 className="h-5 w-5 animate-spin" />
                                     Iniciando checkout...
                                 </>
                             ) : (
                                 <>
-                                    <Sparkles className="w-5 h-5" />
+                                    <Sparkles className="h-5 w-5" />
                                     {checkoutLabel}
-                                    <span className="text-sm font-semibold opacity-90">· {checkoutCtaAmount}</span>
                                 </>
                             )}
                         </motion.button>
-                        <p className="text-xs text-charcoal-500 text-center">
-                            Pago protegido por Mercado Pago (con fallback Stripe).
+                        <p className="mt-4 text-center text-xs font-medium text-[var(--play-text-muted)]">
+                            Pago protegido y seguimiento completo del pedido.
                         </p>
-                        {checkoutError && <p className="text-sm text-red-600">{checkoutError}</p>}
+                        {checkoutError && <p className="mt-3 text-sm text-red-600">{checkoutError}</p>}
                     </div>
-                </div>
-            </motion.div>
+
+                    <div className="grid gap-2 text-xs">
+                        <div className="play-card-soft flex items-center gap-2 px-3 py-2 text-[#38643e]">
+                            <Clock3 className="h-4 w-4" />
+                            {deliveryCopy}
+                        </div>
+                        <div className="play-card-soft flex items-center gap-2 px-3 py-2 text-[var(--play-primary)]">
+                            <ShieldCheck className="h-4 w-4" />
+                            Checkout seguro
+                        </div>
+                        <div className="play-card-soft flex items-center gap-2 px-3 py-2 text-[#5c4900]">
+                            {format === "print" ? <Truck className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                            Seguimiento completo
+                        </div>
+                    </div>
+                </motion.aside>
+            </div>
         </div>
     )
 }

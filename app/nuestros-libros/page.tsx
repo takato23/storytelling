@@ -8,26 +8,16 @@ import { STORIES } from "@/lib/stories"
 
 export default function BooksPage() {
     return (
-        <main className="min-h-screen bg-cream-50 pt-24">
-            {/* Navbar is global in layout.tsx usually, but checking layout.tsx in Step 6 would confirm. 
-              Step 6 showed layout.tsx size 1241 bytes. 
-              Usually Navbar is in RootLayout. 
-              Let's check layout.tsx content if possible or assume standard Next.js.
-              But `page.tsx` didn't have Navbar in it? 
-              Wait, `page.tsx` (Step 13) does NOT have <Navbar />. It has <Home />.
-              So Navbar is likely in layout.tsx.
-              So I don't need to import Navbar here.
-           */}
-
+        <main className="play-pattern min-h-screen pt-24">
             <div className="container mx-auto px-6 py-12">
-                <div className="text-center mb-16">
-                    <span className="inline-block px-4 py-2 rounded-full bg-coral-100 text-coral-700 text-sm font-medium mb-4">
+                <div className="mx-auto mb-16 max-w-5xl rounded-[36px] bg-[linear-gradient(135deg,#6aa7f8,#72aefb)] px-6 py-10 text-center shadow-[0_24px_80px_-36px_rgba(0,93,167,0.42)] md:px-10">
+                    <span className="play-kicker mb-4">
                         Colección Completa
                     </span>
-                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-charcoal-900 mb-6">
-                        Nuestros <span className="text-coral-500">Libros Mágicos</span>
+                    <h1 className="mb-6 text-4xl font-black tracking-tight text-[#08244a] md:text-5xl lg:text-6xl">
+                        Nuestros <span className="text-white">Libros Mágicos</span>
                     </h1>
-                    <p className="text-xl text-charcoal-600 max-w-2xl mx-auto">
+                    <p className="mx-auto max-w-2xl text-lg font-semibold text-[#17386a] md:text-xl">
                         Explora nuestra colección completa de aventuras personalizadas.
                         Cada historia es única, como tu pequeño.
                     </p>
@@ -37,7 +27,7 @@ export default function BooksPage() {
                     stories={STORIES}
                     title={null}
                     subtitle=""
-                    className="!py-0"
+                    className="!bg-transparent !py-0"
                 />
             </div>
             <Footer />

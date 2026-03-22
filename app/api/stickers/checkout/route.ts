@@ -1,20 +1,27 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { handleRouteError } from "@/lib/api";
+import { ApiError } from "@/lib/auth";
+import { getBaseUrl } from "@/lib/config";
 import {
   createMercadoPagoPreferenceGeneric,
   getCheckoutProvider,
 } from "@/lib/mercadopago";
 import { getRequestId, logEvent, setRequestIdHeader } from "@/lib/observability";
 import { getShippingRateForAddress, toMinorUnits } from "@/lib/pricing";
+import { enforceRateLimit } from "@/lib/rate-limit";
+import { verifyStickerPreviewToken } from "@/lib/sticker-preview-token";
 import { getStripeClient } from "@/lib/stripe";
 import {
   DEFAULT_STICKER_STYLE_ID,
   STICKER_STYLE_IDS,
   STICKER_UNIT_PRICE_ARS,
+  filterAllowedStickerThemes,
 } from "@/lib/stickers";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 import { ShippingAddressSchema } from "@/lib/types";
+
+export const runtime = "nodejs";
 
 const StickerCheckoutPayloadSchema = z.object({
   customerName: z.string().trim().min(2).max(120),
@@ -24,13 +31,10 @@ const StickerCheckoutPayloadSchema = z.object({
   themes: z.array(z.string().min(2)).min(1).max(6),
   styleId: z.enum(STICKER_STYLE_IDS).default(DEFAULT_STICKER_STYLE_ID),
   quantity: z.number().int().min(1).max(10),
-  previewImageUrl: z.string().url().optional(),
+  previewImageUrl: z.string().url(),
+  previewToken: z.string().min(32),
   shippingAddress: ShippingAddressSchema,
 });
-
-function getBaseUrl(request: Request) {
-  return process.env.NEXT_PUBLIC_SITE_URL || request.headers.get("origin") || new URL(request.url).origin;
-}
 
 function round2(value: number) {
   return Number(value.toFixed(2));
@@ -47,9 +51,27 @@ export async function POST(request: Request) {
   const requestId = getRequestId(request);
   const route = "/api/stickers/checkout";
   try {
+    const limited = enforceRateLimit(request, { key: route, limit: 6, windowMs: 60_000 });
+    if (limited) {
+      return setRequestIdHeader(limited, requestId);
+    }
+
     const payload = StickerCheckoutPayloadSchema.parse(await request.json());
     const adminClient = createSupabaseAdminClient();
     const baseUrl = getBaseUrl(request);
+    const filteredThemes = filterAllowedStickerThemes(payload.childGender, payload.themes);
+
+    if (filteredThemes.length !== payload.themes.length) {
+      throw new ApiError(400, "invalid_themes", "Las temáticas no son válidas para la selección actual.");
+    }
+
+    verifyStickerPreviewToken({
+      token: payload.previewToken,
+      childGender: payload.childGender,
+      themes: filteredThemes,
+      styleId: payload.styleId,
+      previewImageUrl: payload.previewImageUrl,
+    });
 
     const shippingSelection = await getShippingRateForAddress(adminClient, {
       city: payload.shippingAddress.city,
@@ -68,9 +90,9 @@ export async function POST(request: Request) {
       customer_email: payload.customerEmail,
       customer_phone: payload.customerPhone ?? null,
       child_gender: payload.childGender,
-      selected_themes: payload.themes,
+      selected_themes: filteredThemes,
       selected_style: payload.styleId,
-      preview_image_url: payload.previewImageUrl ?? null,
+      preview_image_url: payload.previewImageUrl,
       quantity: payload.quantity,
       unit_price_ars: STICKER_UNIT_PRICE_ARS,
       shipping_fee_ars: shippingFee,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { handleRouteError } from "@/lib/api";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { getRequestId, logEvent, setRequestIdHeader } from "@/lib/observability";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 
@@ -10,10 +11,17 @@ const ContactPayloadSchema = z.object({
   message: z.string().trim().min(10).max(2000),
 });
 
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
   const route = "/api/contact";
   try {
+    const limited = enforceRateLimit(request, { key: route, limit: 5, windowMs: 60_000 });
+    if (limited) {
+      return setRequestIdHeader(limited, requestId);
+    }
+
     const payload = ContactPayloadSchema.parse(await request.json());
     const adminClient = createSupabaseAdminClient();
 

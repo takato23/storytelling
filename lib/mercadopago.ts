@@ -1,9 +1,9 @@
-const MERCADOPAGO_API_BASE = process.env.MERCADOPAGO_API_BASE ?? "https://api.mercadopago.com";
+import { getEnv, getMercadoPagoConfig } from "@/lib/config";
 
 type MpMetadata = Record<string, string | number | boolean | null | undefined>;
 
 function getAccessToken() {
-  const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  const { accessToken: token } = getMercadoPagoConfig();
   if (!token) {
     throw new Error("Missing MERCADOPAGO_ACCESS_TOKEN");
   }
@@ -11,13 +11,13 @@ function getAccessToken() {
 }
 
 function getWebhookUrl(baseUrl: string) {
-  const explicitWebhookUrl = process.env.MERCADOPAGO_WEBHOOK_URL;
+  const { webhookUrl: explicitWebhookUrl } = getMercadoPagoConfig();
   if (explicitWebhookUrl) return explicitWebhookUrl;
   return `${baseUrl.replace(/\/$/, "")}/api/webhooks/mercadopago`;
 }
 
 export function getCheckoutProvider(): "mercadopago" | "stripe" {
-  return process.env.CHECKOUT_PROVIDER === "stripe" ? "stripe" : "mercadopago";
+  return getEnv().checkoutProvider;
 }
 
 export interface MercadoPagoPreferenceInput {
@@ -56,6 +56,7 @@ export async function createMercadoPagoPreferenceGeneric(
   input: MercadoPagoPreferenceGenericInput,
 ): Promise<MercadoPagoPreferenceResult> {
   const accessToken = getAccessToken();
+  const { apiBase } = getMercadoPagoConfig();
   const webhookUrl = getWebhookUrl(input.baseUrl);
   const defaultBackUrls = {
     success: `${input.baseUrl}/success?provider=mercadopago`,
@@ -67,7 +68,7 @@ export async function createMercadoPagoPreferenceGeneric(
     ...(input.backUrls ?? {}),
   };
 
-  const response = await fetch(`${MERCADOPAGO_API_BASE}/checkout/preferences`, {
+  const response = await fetch(`${apiBase}/checkout/preferences`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -147,7 +148,8 @@ export interface MercadoPagoPaymentPayload {
 
 export async function getMercadoPagoPayment(paymentId: string): Promise<MercadoPagoPaymentPayload> {
   const accessToken = getAccessToken();
-  const response = await fetch(`${MERCADOPAGO_API_BASE}/v1/payments/${paymentId}`, {
+  const { apiBase } = getMercadoPagoConfig();
+  const response = await fetch(`${apiBase}/v1/payments/${paymentId}`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,

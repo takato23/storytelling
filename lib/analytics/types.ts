@@ -23,6 +23,8 @@ export type AnalyticsEventMap = {
   preview_generated: {
     story_id: string;
     style_id: string;
+    preview_attempt?: number;
+    preview_attempts_remaining?: number;
   };
   checkout_started: {
     format: "digital" | "print";

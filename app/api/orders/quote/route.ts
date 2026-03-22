@@ -13,6 +13,8 @@ import {
 import { createSupabaseAdminClient } from "@/lib/supabase";
 import { OrderQuoteRequestSchema } from "@/lib/types";
 
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
   const route = "/api/orders/quote";
@@ -46,6 +48,7 @@ export async function POST(request: Request) {
       story,
       format: payload.format,
       currency: payload.currency,
+      printOptions: payload.print_options,
       fxRateUsdArs: fx.usd_to_ars,
       shippingFeeArs: shippingSelection?.feeArs ?? 0,
       shippingRuleId: shippingSelection?.ruleId ?? null,

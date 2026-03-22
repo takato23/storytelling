@@ -6,6 +6,8 @@ import { getRequestId, logEvent, setRequestIdHeader } from "@/lib/observability"
 import { createSupabaseAdminClient } from "@/lib/supabase";
 import { GenerateOrderRequestSchema } from "@/lib/types";
 
+export const runtime = "nodejs";
+
 async function isAdminUser(adminClient: ReturnType<typeof createSupabaseAdminClient>, userId: string) {
   const { data } = await adminClient.from("profiles").select("role").eq("id", userId).maybeSingle();
   return data?.role === "admin";
@@ -37,7 +39,10 @@ export async function POST(request: Request) {
       .limit(1)
       .maybeSingle();
 
-    if (!paidPayment && orderContext.orderStatus !== "ready_digital" && orderContext.orderStatus !== "print_queued") {
+    if (
+      !paidPayment &&
+      !["ready_digital", "qa_pending", "ready_print_assets", "qa_failed", "print_queued"].includes(orderContext.orderStatus)
+    ) {
       throw new ApiError(409, "payment_required", "Order must be paid before generation");
     }
 

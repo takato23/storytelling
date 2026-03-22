@@ -9,22 +9,22 @@ export function TheMagicSection({ className = "" }: { className?: string }) {
         {
             icon: Layers,
             title: "Papel Premium",
-            description: "Papel de 170g con certificación FSC. Grueso, duradero y perfecto para manitas pequeñas."
+            description: "Papel de 170g, resistente y durable."
         },
         {
             icon: Palette,
             title: "Colores Vivos",
-            description: "Impresión de alta fidelidad que hace que cada ilustración salte de la página."
+            description: "Impresión nítida y a color."
         },
         {
             icon: Book,
             title: "Encuadernación",
-            description: "Tapa dura resistente o tapa blanda flexible. Cosido para durar toda una infancia."
+            description: "Tapa dura o blanda, según la edición."
         },
         {
             icon: Leaf,
             title: "Ecológico",
-            description: "Producido localmente para reducir la huella de carbono. Tinta eco-friendly."
+            description: "Producción local y materiales responsables."
         }
     ]
 
@@ -69,13 +69,13 @@ export function TheMagicSection({ className = "" }: { className?: string }) {
                             viewport={{ once: true }}
                         >
                             <span className="inline-block px-4 py-2 rounded-full bg-purple-100 text-purple-700 text-sm font-medium mb-4">
-                                Calidad de Museo
+                                Calidad de impresión
                             </span>
                             <h2 className="text-3xl md:text-4xl font-bold text-charcoal-900 mb-6">
-                                No es solo un cuento,<br /> es un <span className="text-purple-600">tesoro</span>
+                                Un libro para <span className="text-purple-600">guardar</span>
                             </h2>
                             <p className="text-lg text-charcoal-600 mb-10 leading-relaxed">
-                                Diseñamos cada libro para que sea una reliquia familiar. Desde el tacto del papel hasta la intensidad de los colores, la calidad se siente en cada página.
+                                Cuidamos el papel, la impresión y la terminación para que se vea bien y dure.
                             </p>
 
                             <div className="grid sm:grid-cols-2 gap-8">

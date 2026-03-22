@@ -1,5 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Currency, OrderFormat } from "@/lib/types";
+import { getEnv } from "@/lib/config";
+import {
+  DEFAULT_PRINT_PRODUCT_ID,
+  getPrintProduct,
+  GIFT_WRAP_PRICE_ARS,
+  STORYTELLING_PRINT_MARGIN_ARS,
+} from "@/lib/print-products";
+import type { Currency, OrderFormat, PrintOptions } from "@/lib/types";
 
 const FALLBACK_DIGITAL_PRICE_ARS = 9990;
 const FALLBACK_PRINT_PRICE_ARS = 29990;
@@ -23,6 +30,7 @@ export interface StoryPricing {
   base_price_ars: number | null;
   digital_price_ars: number | null;
   print_price_ars: number | null;
+  print_page_count: number | null;
 }
 
 interface ShippingRateRuleRow {
@@ -57,7 +65,7 @@ export async function getStoryPricing(
 ): Promise<StoryPricing> {
   const { data, error } = await adminClient
     .from("stories")
-    .select("id,title,base_price_usd,base_price_ars,digital_price_ars,print_price_ars,active")
+    .select("id,title,base_price_usd,base_price_ars,digital_price_ars,print_price_ars,print_specs,active")
     .eq("id", storyId)
     .eq("active", true)
     .maybeSingle();
@@ -73,6 +81,13 @@ export async function getStoryPricing(
     base_price_ars: data.base_price_ars === null ? null : Number(data.base_price_ars),
     digital_price_ars: data.digital_price_ars === null ? null : Number(data.digital_price_ars),
     print_price_ars: data.print_price_ars === null ? null : Number(data.print_price_ars),
+    print_page_count:
+      data.print_specs &&
+      typeof data.print_specs === "object" &&
+      "pages" in data.print_specs &&
+      typeof data.print_specs.pages === "number"
+        ? Number(data.print_specs.pages)
+        : null,
   };
 }
 
@@ -93,7 +108,7 @@ export async function getLatestFxUsdArs(
     };
   }
 
-  const fallback = Number(process.env.DEFAULT_USD_TO_ARS);
+  const fallback = Number(getEnv().DEFAULT_USD_TO_ARS);
   if (!Number.isFinite(fallback) || fallback <= 0) {
     throw new Error("No FX rate available for ARS. Load fx_rates_daily or set DEFAULT_USD_TO_ARS.");
   }
@@ -104,7 +119,22 @@ export async function getLatestFxUsdArs(
   };
 }
 
-function resolveStoryBasePriceArs(story: StoryPricing, format: OrderFormat): number {
+function resolvePrintBasePriceArs(story: StoryPricing, printOptions?: PrintOptions): number {
+  const product = getPrintProduct(printOptions?.productId ?? DEFAULT_PRINT_PRODUCT_ID);
+  const storyPages = story.print_page_count ?? product.basePages;
+  const extraPages = Math.max(0, storyPages - product.basePages);
+  const productionCost = product.baseCostArs + extraPages * product.extraPageCostArs;
+  const giftWrapCost = printOptions?.includeGiftWrap ? GIFT_WRAP_PRICE_ARS : 0;
+  const retailFloor = productionCost + STORYTELLING_PRINT_MARGIN_ARS;
+
+  if (story.print_price_ars && story.print_price_ars > retailFloor) {
+    return round2(story.print_price_ars + giftWrapCost);
+  }
+
+  return round2(retailFloor + giftWrapCost);
+}
+
+function resolveStoryBasePriceArs(story: StoryPricing, format: OrderFormat, printOptions?: PrintOptions): number {
   if (format === "digital") {
     if (story.digital_price_ars && story.digital_price_ars > 0) return round2(story.digital_price_ars);
     if (story.base_price_ars && story.base_price_ars > 0) return round2(story.base_price_ars);
@@ -112,10 +142,11 @@ function resolveStoryBasePriceArs(story: StoryPricing, format: OrderFormat): num
     return FALLBACK_DIGITAL_PRICE_ARS;
   }
 
-  if (story.print_price_ars && story.print_price_ars > 0) return round2(story.print_price_ars);
-  if (story.base_price_ars && story.base_price_ars > 0) return round2(story.base_price_ars);
-  if (story.base_price_usd > 0) return round2(story.base_price_usd * 1000);
-  return FALLBACK_PRINT_PRICE_ARS;
+  if (!story.print_price_ars && !story.base_price_ars && !story.base_price_usd) {
+    return FALLBACK_PRINT_PRICE_ARS;
+  }
+
+  return resolvePrintBasePriceArs(story, printOptions);
 }
 
 function pickShippingRule(
@@ -207,6 +238,7 @@ export interface PricingInput {
   story: StoryPricing;
   format: OrderFormat;
   currency: Currency;
+  printOptions?: PrintOptions;
   fxRateUsdArs?: number;
   shippingFeeArs?: number;
   shippingRuleId?: string | null;
@@ -223,7 +255,7 @@ export interface PricingOutput {
 }
 
 export function buildPricing(input: PricingInput): PricingOutput {
-  const subtotalArs = resolveStoryBasePriceArs(input.story, input.format);
+  const subtotalArs = resolveStoryBasePriceArs(input.story, input.format, input.printOptions);
   const shippingArs = input.format === "print" ? round2(input.shippingFeeArs ?? 0) : 0;
   const totalArs = round2(subtotalArs + shippingArs);
 

@@ -14,22 +14,22 @@ const BADGES: Badge[] = [
     {
         icon: Shield,
         title: "Compra Segura",
-        description: "Datos protegidos con encriptación SSL",
+        description: "Datos protegidos y checkout cifrado",
     },
     {
         icon: Truck,
-        title: "Envío Gratis",
-        description: "En pedidos impresos a todo el país",
+        title: "Envíos Claros",
+        description: "Costo y plazo visibles antes de pagar",
     },
     {
         icon: RefreshCw,
-        title: "Garantía 100%",
-        description: "Satisfacción garantizada o devolución",
+        title: "Soporte Humano",
+        description: "Te ayudamos por soporte y correo",
     },
     {
         icon: CreditCard,
-        title: "Pago Flexible",
-        description: "Tarjeta, transferencia o cuotas",
+        title: "Pago Protegido",
+        description: "Mercado Pago o Stripe según configuración",
     },
 ]
 
@@ -58,12 +58,12 @@ export function TrustBadges({ className = "", variant = "horizontal" }: TrustBad
                             transition={{ delay: index * 0.1 }}
                             whileHover={{ scale: 1.05 }}
                         >
-                            <div className="flex-shrink-0 w-12 h-12 bg-teal-50 rounded-xl flex items-center justify-center border border-teal-100">
+                            <div className="surface-card flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-teal-100">
                                 <Icon className="w-6 h-6 text-teal-600" />
                             </div>
                             <div className={variant === "grid" ? "" : "text-left"}>
-                                <h4 className="font-semibold text-charcoal-800 text-sm">{badge.title}</h4>
-                                <p className="text-xs text-charcoal-500">{badge.description}</p>
+                                <h4 className="text-sm font-semibold text-[var(--text-primary)]">{badge.title}</h4>
+                                <p className="text-xs text-[var(--text-muted)]">{badge.description}</p>
                             </div>
                         </motion.div>
                     )
@@ -76,22 +76,22 @@ export function TrustBadges({ className = "", variant = "horizontal" }: TrustBad
 // Compact version for footer or checkout
 export function TrustBadgesCompact({ className = "" }: { className?: string }) {
     return (
-        <div className={`flex flex-wrap justify-center gap-4 text-charcoal-500 ${className}`}>
+        <div className={`flex flex-wrap justify-center gap-4 text-[var(--text-secondary)] ${className}`}>
             <div className="flex items-center gap-1.5 text-sm">
                 <Lock className="w-4 h-4 text-teal-500" />
                 <span>SSL Seguro</span>
             </div>
             <div className="flex items-center gap-1.5 text-sm">
                 <Shield className="w-4 h-4 text-teal-500" />
-                <span>Compra protegida</span>
+                <span>Checkout protegido</span>
             </div>
             <div className="flex items-center gap-1.5 text-sm">
                 <Award className="w-4 h-4 text-teal-500" />
-                <span>Garantía 100%</span>
+                <span>Soporte humano</span>
             </div>
             <div className="flex items-center gap-1.5 text-sm">
                 <Truck className="w-4 h-4 text-teal-500" />
-                <span>Envío 48h</span>
+                <span>Envíos a todo el país</span>
             </div>
         </div>
     )

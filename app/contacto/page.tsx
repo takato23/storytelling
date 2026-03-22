@@ -41,36 +41,36 @@ export default function ContactoPage() {
     }
 
     return (
-        <main className="min-h-screen bg-cream-50 pt-24">
+        <main className="page-shell min-h-screen pt-24">
             <section className="container mx-auto px-6 py-16">
-                <div className="max-w-3xl mx-auto text-center mb-12">
-                    <span className="inline-block px-4 py-2 rounded-full bg-indigo-100 text-indigo-700 text-sm font-semibold mb-4">
+                <div className="page-panel mx-auto mb-12 max-w-3xl rounded-[32px] px-6 py-10 text-center md:px-10">
+                    <span className="section-kicker mb-4">
                         Contacto
                     </span>
-                    <h1 className="text-4xl md:text-5xl font-serif text-charcoal-900 mb-4">
+                    <h1 className="section-heading mb-4 text-4xl md:text-5xl">
                         ¿Te ayudamos con tu pedido?
                     </h1>
-                    <p className="text-charcoal-600">
+                    <p className="section-copy font-semibold">
                         Si tienes dudas sobre personalización, pagos o envíos, escríbenos y te respondemos por email.
                     </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="max-w-2xl mx-auto bg-white rounded-3xl border border-charcoal-100 p-6 md:p-8 shadow-sm space-y-5">
+                <form onSubmit={handleSubmit} className="page-panel mx-auto max-w-2xl space-y-5 rounded-3xl p-6 md:p-8">
                     <div>
-                        <label htmlFor="contact-name" className="block text-sm font-semibold text-charcoal-700 mb-2">
+                        <label htmlFor="contact-name" className="mb-2 block text-sm font-semibold text-[var(--text-secondary)]">
                             Nombre
                         </label>
                         <input
                             id="contact-name"
                             value={name}
                             onChange={(event) => setName(event.target.value)}
-                            className="w-full rounded-xl border border-charcoal-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            className="form-field"
                             placeholder="Tu nombre"
                             required
                         />
                     </div>
                     <div>
-                        <label htmlFor="contact-email" className="block text-sm font-semibold text-charcoal-700 mb-2">
+                        <label htmlFor="contact-email" className="mb-2 block text-sm font-semibold text-[var(--text-secondary)]">
                             Email
                         </label>
                         <input
@@ -78,20 +78,20 @@ export default function ContactoPage() {
                             type="email"
                             value={email}
                             onChange={(event) => setEmail(event.target.value)}
-                            className="w-full rounded-xl border border-charcoal-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            className="form-field"
                             placeholder="tu@email.com"
                             required
                         />
                     </div>
                     <div>
-                        <label htmlFor="contact-message" className="block text-sm font-semibold text-charcoal-700 mb-2">
+                        <label htmlFor="contact-message" className="mb-2 block text-sm font-semibold text-[var(--text-secondary)]">
                             Mensaje
                         </label>
                         <textarea
                             id="contact-message"
                             value={message}
                             onChange={(event) => setMessage(event.target.value)}
-                            className="w-full min-h-32 rounded-xl border border-charcoal-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            className="form-field min-h-32"
                             placeholder="Cuéntanos qué necesitas"
                             required
                         />
@@ -111,7 +111,7 @@ export default function ContactoPage() {
                     <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full rounded-xl bg-indigo-950 hover:bg-black text-white font-semibold py-3 transition-colors disabled:opacity-60"
+                        className="public-button-primary w-full rounded-xl py-3 font-semibold transition-colors disabled:opacity-60"
                     >
                         {isSubmitting ? "Enviando..." : "Enviar mensaje"}
                     </button>

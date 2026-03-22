@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { handleRouteError } from "@/lib/api";
 import { requireAdminUser } from "@/lib/auth";
+import { getEnv } from "@/lib/config";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 
 const PAID_OR_AFTER_STATUSES = new Set([
   "paid",
   "generating",
+  "qa_pending",
+  "ready_print_assets",
+  "qa_failed",
   "ready_digital",
   "print_queued",
   "in_production",
@@ -19,6 +23,9 @@ const CHECKOUT_STARTED_STATUSES = new Set([
   "pending_payment",
   "paid",
   "generating",
+  "qa_pending",
+  "ready_print_assets",
+  "qa_failed",
   "ready_digital",
   "print_queued",
   "in_production",
@@ -54,6 +61,7 @@ export async function GET(request: Request) {
       { data: generationJobs, error: generationJobsError },
       { data: printJobs, error: printJobsError },
       { data: orderEvents, error: orderEventsError },
+      { data: previewUsage, error: previewUsageError },
     ] = await Promise.all([
       adminClient.from("orders").select("id,status,created_at").gte("created_at", since),
       adminClient.from("payments").select("status,created_at").gte("created_at", since),
@@ -64,15 +72,20 @@ export async function GET(request: Request) {
         .select("order_id,event_type,created_at")
         .in("event_type", ["payment_completed", "digital_ready"])
         .gte("created_at", since),
+      adminClient
+        .from("preview_generation_usage")
+        .select("status,user_id,created_at")
+        .gte("created_at", since),
     ]);
 
-    if (ordersError || paymentsError || generationJobsError || printJobsError || orderEventsError) {
+    if (ordersError || paymentsError || generationJobsError || printJobsError || orderEventsError || previewUsageError) {
       throw new Error(
         ordersError?.message ||
           paymentsError?.message ||
           generationJobsError?.message ||
           printJobsError?.message ||
           orderEventsError?.message ||
+          previewUsageError?.message ||
           "Failed to load metrics",
       );
     }
@@ -120,12 +133,22 @@ export async function GET(request: Request) {
 
     const digitalReadyLatencyMinutes = avg(digitalReadyLatenciesMinutes);
 
-    const queuedPrintJobs = (printJobs ?? []).filter((job) => String(job.status) === "queued");
+    const queuedPrintJobs = (printJobs ?? []).filter((job) => ["review_required", "approved"].includes(String(job.status)));
     const queueAgesHours = queuedPrintJobs.map((job) => (Date.now() - new Date(String(job.created_at)).getTime()) / (1000 * 60 * 60));
     const printQueueAgeHours = queueAgesHours.length === 0 ? 0 : Number(Math.max(...queueAgesHours).toFixed(2));
 
+    const previewStarts = (previewUsage ?? []).length;
+    const previewSuccesses = (previewUsage ?? []).filter((item) => String(item.status) === "succeeded").length;
+    const previewFailures = (previewUsage ?? []).filter((item) => String(item.status) === "failed").length;
+    const uniquePreviewUsers = new Set((previewUsage ?? []).map((item) => String(item.user_id))).size;
+    const previewToPaidRate = safePct(paidOrders, previewStarts);
+    const estimatedPreviewCostUsd = Number((previewStarts * getEnv().previewImageEstimatedCostUsd).toFixed(2));
+
     return NextResponse.json({
       window_days: days,
+      settings: {
+        previews_enabled: !getEnv().previewsDisabled,
+      },
       metrics: {
         checkout_start_to_paid_rate: {
           value_pct: checkoutStartToPaidRate,
@@ -149,6 +172,21 @@ export async function GET(request: Request) {
         print_queue_age_hours: {
           max: printQueueAgeHours,
           queued_jobs: queuedPrintJobs.length,
+        },
+        preview_volume: {
+          total: previewStarts,
+          successful: previewSuccesses,
+          failed: previewFailures,
+          unique_users: uniquePreviewUsers,
+        },
+        preview_to_paid_rate: {
+          value_pct: previewToPaidRate,
+          numerator: paidOrders,
+          denominator: previewStarts,
+        },
+        estimated_preview_cost_usd: {
+          total: estimatedPreviewCostUsd,
+          unit_cost: getEnv().previewImageEstimatedCostUsd,
         },
       },
     });

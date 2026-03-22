@@ -82,7 +82,7 @@ export function TestimonialsSection({ className = "" }: TestimonialsSectionProps
     const compactMotion = prefersReducedMotion || isMobile
 
     return (
-        <section className={`py-24 relative overflow-hidden bg-gradient-to-b from-[#f5f0eb] to-white ${className}`}>
+        <section className={`relative overflow-hidden py-24 lg:py-28 ${className}`}>
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-50/50 rounded-full blur-3xl pointer-events-none translate-x-1/2 -translate-y-1/2" />
             <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-coral-50/50 rounded-full blur-3xl pointer-events-none -translate-x-1/2 translate-y-1/2" />
 
@@ -93,28 +93,28 @@ export function TestimonialsSection({ className = "" }: TestimonialsSectionProps
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                 >
-                    <span className="inline-block px-4 py-2 rounded-full bg-coral-100/50 border border-coral-100 text-coral-700 text-[10px] font-black uppercase tracking-[0.2em] mb-4 shadow-sm">
+                    <span className="section-kicker mb-4">
                         Testimonios
                     </span>
-                    <h2 className="text-fluid-section font-serif text-charcoal-900 mb-6 drop-shadow-sm">
+                    <h2 className="section-heading text-fluid-section mb-6">
                         Lo que dicen las <span className="text-coral-500 relative">familias</span>
                     </h2>
-                    <p className="text-charcoal-500 text-fluid-body max-w-2xl mx-auto font-light">
-                        Experiencias reales de madres y padres de Argentina.
+                    <p className="section-copy text-fluid-body mx-auto max-w-2xl font-semibold">
+                        Historias reales de familias de Argentina.
                     </p>
                 </motion.div>
 
                 {compactMotion ? (
                     <div className="grid md:grid-cols-2 gap-5">
                         {TESTIMONIALS.map((testimonial) => (
-                            <article key={testimonial.id} className="bg-white/90 rounded-3xl p-6 border border-white/70 shadow-sm flex flex-col">
+                            <article key={testimonial.id} className="page-panel flex flex-col rounded-3xl p-6">
                                 <div className="flex gap-1 text-yellow-400 mb-3">
                                     {[...Array(testimonial.rating)].map((_, j) => (
                                         <Star key={j} className="w-4 h-4 fill-current" />
                                     ))}
                                 </div>
                                 <p className="text-charcoal-700 italic flex-grow mb-4 text-sm md:text-base leading-relaxed">
-                                    "{testimonial.text}"
+                                    &ldquo;{testimonial.text}&rdquo;
                                 </p>
                                 <div className="flex items-center gap-3 mt-auto pt-4 border-t border-charcoal-50">
                                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-coral-400 to-rose-500 text-white flex items-center justify-center font-bold text-sm shadow-inner">
@@ -137,12 +137,12 @@ export function TestimonialsSection({ className = "" }: TestimonialsSectionProps
                                 transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
                             >
                                 {[...TESTIMONIALS, ...TESTIMONIALS, ...TESTIMONIALS].map((testimonial, i) => (
-                                    <div key={`${testimonial.id}-${i}`} className="w-[300px] md:w-[400px] bg-white/80 backdrop-blur-xl rounded-3xl p-6 border border-white/50 shadow-sm hover:shadow-xl transition-shadow flex flex-col">
+                                    <div key={`${testimonial.id}-${i}`} className="page-panel flex w-[300px] flex-col rounded-3xl p-6 transition-shadow hover:shadow-xl md:w-[400px]">
                                         <div className="flex gap-1 text-yellow-400 mb-3">
                                             {[...Array(testimonial.rating)].map((_, j) => <Star key={j} className="w-4 h-4 fill-current" />)}
                                         </div>
                                         <p className="text-charcoal-700 italic flex-grow mb-4 text-sm md:text-base leading-relaxed">
-                                            "{testimonial.text}"
+                                            &ldquo;{testimonial.text}&rdquo;
                                         </p>
                                         <div className="flex items-center gap-3 mt-auto pt-4 border-t border-charcoal-50">
                                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-coral-400 to-rose-500 text-white flex items-center justify-center font-bold text-sm shadow-inner">
@@ -163,12 +163,12 @@ export function TestimonialsSection({ className = "" }: TestimonialsSectionProps
                                 transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
                             >
                                 {[...TESTIMONIALS].reverse().concat([...TESTIMONIALS].reverse()).concat([...TESTIMONIALS].reverse()).map((testimonial, i) => (
-                                    <div key={`${testimonial.id}-r-${i}`} className="w-[300px] md:w-[400px] bg-white/80 backdrop-blur-xl rounded-3xl p-6 border border-white/50 shadow-sm hover:shadow-xl transition-shadow flex flex-col">
+                                    <div key={`${testimonial.id}-r-${i}`} className="page-panel flex w-[300px] flex-col rounded-3xl p-6 transition-shadow hover:shadow-xl md:w-[400px]">
                                         <div className="flex gap-1 text-yellow-400 mb-3">
                                             {[...Array(testimonial.rating)].map((_, j) => <Star key={j} className="w-4 h-4 fill-current" />)}
                                         </div>
                                         <p className="text-charcoal-700 italic flex-grow mb-4 text-sm md:text-base leading-relaxed">
-                                            "{testimonial.text}"
+                                            &ldquo;{testimonial.text}&rdquo;
                                         </p>
                                         <div className="flex items-center gap-3 mt-auto pt-4 border-t border-charcoal-50">
                                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-emerald-500 text-white flex items-center justify-center font-bold text-sm shadow-inner">
@@ -184,7 +184,7 @@ export function TestimonialsSection({ className = "" }: TestimonialsSectionProps
                             </motion.div>
                         </div>
 
-                        <div className="absolute top-0 bottom-0 left-0 w-12 md:w-32 bg-gradient-to-r from-[#f5f0eb] to-transparent z-10 pointer-events-none" />
+                        <div className="absolute top-0 bottom-0 left-0 w-12 md:w-32 bg-gradient-to-r from-[#fff2e8] to-transparent z-10 pointer-events-none" />
                         <div className="absolute top-0 bottom-0 right-0 w-12 md:w-32 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
                     </>
                 )}
@@ -195,13 +195,13 @@ export function TestimonialsSection({ className = "" }: TestimonialsSectionProps
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                 >
-                    <div className="flex items-center gap-3 px-6 py-3 rounded-full bg-white/50 backdrop-blur-md border border-white/60">
+                    <div className="page-card flex items-center gap-3 rounded-full px-6 py-3">
                         <div className="flex text-yellow-400">
                             {[1, 2, 3, 4, 5].map((i) => (
                                 <Star key={i} className="w-5 h-5 fill-current" />
                             ))}
                         </div>
-                        <span className="text-charcoal-600 font-bold text-sm tracking-wide">Valorado por familias de todo el país</span>
+                        <span className="text-charcoal-600 font-bold text-sm tracking-wide">Elegido por familias de todo el país</span>
                     </div>
                 </motion.div>
             </div>

@@ -58,7 +58,7 @@ export function FlipbookPreview({ title, pages, onComplete, showWatermark = true
     }
 
     return (
-        <div className="flex flex-col items-center justify-center py-8 relative">
+        <div className="relative flex flex-col items-center justify-center py-2">
             {showOverlay && (
                 <div className="absolute inset-0 z-50 pointer-events-none">
                     <Canvas>
@@ -66,41 +66,30 @@ export function FlipbookPreview({ title, pages, onComplete, showWatermark = true
                     </Canvas>
                 </div>
             )}
-            <div className="relative w-full max-w-4xl aspect-[3/2] perspective-[1500px]">
+            <div className="relative aspect-[16/9] w-full max-w-[980px] perspective-[1500px]">
                 <AnimatePresence mode="wait">
-                    {/* Simplified Flipbook Representation for now using a nice slider/card carousel with 3D feel */}
-                    <div className="w-full h-full flex items-center justify-center gap-8">
-                        {/* Left Control */}
-                        <button
-                            onClick={handlePrev}
-                            disabled={currentPage === 0}
-                            className="p-3 bg-white/80 rounded-full shadow-lg disabled:opacity-30 hover:bg-white hover:scale-110 transition-all z-10"
-                        >
-                            <ChevronLeft className="w-6 h-6 text-indigo-900" />
-                        </button>
-
-                        {/* Book Content */}
+                    <div className="flex h-full items-center justify-center">
                         <motion.div
                             key={currentPage}
                             initial={{ rotateY: 90, opacity: 0 }}
                             animate={{ rotateY: 0, opacity: 1 }}
                             exit={{ rotateY: -90, opacity: 0 }}
                             transition={{ duration: 0.6, type: "spring" }}
-                            className="flex-1 h-full bg-white rounded-r-2xl shadow-2xl flex overflow-hidden border-l-4 border-indigo-100 relative max-w-2xl"
+                            className="relative flex h-full w-full overflow-hidden rounded-[28px] border border-[#d9e2ff] bg-white shadow-2xl"
                             style={{ transformStyle: "preserve-3d" }}
                             onContextMenu={(event) => event.preventDefault()}
                         >
                             {/* Page Content */}
                             {currentPage === 0 ? (
                                 // Cover
-                                <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 p-8 flex flex-col items-center justify-center text-white text-center relative overflow-hidden">
+                                <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 p-8 text-center text-white">
                                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20" />
-                                    <BookOpen className="w-24 h-24 mb-6 text-indigo-200" />
-                                    <h1 className="text-4xl md:text-5xl font-bold font-serif mb-4 drop-shadow-md">{title}</h1>
-                                    <p className="text-xl text-indigo-100">Una historia mágica personalizada</p>
+                                    <BookOpen className="mb-5 h-20 w-20 text-indigo-200" />
+                                    <h1 className="mb-4 font-serif text-3xl font-bold drop-shadow-md md:text-5xl">{title}</h1>
+                                    <p className="text-lg text-indigo-100 md:text-xl">Una historia mágica personalizada</p>
 
-                                    <div className="mt-12 animate-bounce">
-                                        <span className="text-sm font-bold bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
+                                    <div className="mt-10 animate-bounce">
+                                        <span className="rounded-full bg-white/20 px-4 py-2 text-sm font-bold backdrop-blur-sm">
                                             ¡Abre el libro!
                                         </span>
                                     </div>
@@ -110,9 +99,9 @@ export function FlipbookPreview({ title, pages, onComplete, showWatermark = true
                                 </div>
                             ) : (
                                 // Story Page
-                                <div className="w-full h-full flex flex-col md:flex-row">
+                                <div className="flex h-full w-full flex-col md:flex-row">
                                     {/* Image Side */}
-                                    <div className="w-full md:w-1/2 h-1/2 md:h-full relative bg-gray-100">
+                                    <div className="relative h-1/2 w-full bg-gray-100 md:h-full md:w-1/2">
                                         {pages[currentPage - 1]?.imageUrl ? (
                                             <img
                                                 src={pages[currentPage - 1].imageUrl}
@@ -128,12 +117,12 @@ export function FlipbookPreview({ title, pages, onComplete, showWatermark = true
                                     </div>
 
                                     {/* Text Side */}
-                                    <div className="w-full md:w-1/2 h-1/2 md:h-full p-8 flex items-center justify-center bg-cream-50">
+                                    <div className="flex h-1/2 w-full items-center justify-center bg-cream-50 p-6 md:h-full md:w-1/2 md:p-8">
                                         <div className="text-center">
-                                            <p className="font-serif text-xl md:text-2xl text-charcoal-800 leading-relaxed">
+                                            <p className="font-serif text-lg leading-relaxed text-charcoal-800 md:text-2xl">
                                                 {pages[currentPage - 1]?.text || "..."}
                                             </p>
-                                            <span className="block mt-8 text-sm text-charcoal-400 font-bold">
+                                            <span className="mt-6 block text-sm font-bold text-charcoal-400">
                                                 - {currentPage} -
                                             </span>
                                         </div>
@@ -142,7 +131,7 @@ export function FlipbookPreview({ title, pages, onComplete, showWatermark = true
                             )}
 
                             {/* Center Spine Effect */}
-                            <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-black/20 to-transparent pointer-events-none" />
+                            <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-black/16 to-transparent" />
                             {showWatermark && (
                                 <div className="absolute inset-0 pointer-events-none select-none">
                                     <div className="absolute inset-0 grid place-items-center">
@@ -156,21 +145,28 @@ export function FlipbookPreview({ title, pages, onComplete, showWatermark = true
                                 </div>
                             )}
                         </motion.div>
-
-                        {/* Right Control */}
-                        <button
-                            onClick={handleNext}
-                            disabled={currentPage === pages.length}
-                            className="p-3 bg-white/80 rounded-full shadow-lg disabled:opacity-30 hover:bg-white hover:scale-110 transition-all z-10"
-                        >
-                            <ChevronRight className="w-6 h-6 text-indigo-900" />
-                        </button>
                     </div>
                 </AnimatePresence>
+
+                <button
+                    onClick={handlePrev}
+                    disabled={currentPage === 0}
+                    className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/88 p-3 shadow-lg transition-all hover:bg-white hover:scale-105 disabled:opacity-30"
+                >
+                    <ChevronLeft className="h-5 w-5 text-indigo-900" />
+                </button>
+
+                <button
+                    onClick={handleNext}
+                    disabled={currentPage === pages.length}
+                    className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/88 p-3 shadow-lg transition-all hover:bg-white hover:scale-105 disabled:opacity-30"
+                >
+                    <ChevronRight className="h-5 w-5 text-indigo-900" />
+                </button>
             </div>
 
             {/* Page Indicators */}
-            <div className="mt-8 flex gap-2">
+            <div className="mt-4 flex gap-2">
                 {[0, ...pages.map((_, i) => i + 1)].map((page) => (
                     <button
                         key={page}

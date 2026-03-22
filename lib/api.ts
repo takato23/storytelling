@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { ApiError } from "@/lib/auth";
+import { isProduction } from "@/lib/config";
 
 export function validationErrorResponse(error: ZodError) {
   return NextResponse.json(
@@ -32,7 +33,7 @@ export function handleRouteError(error: unknown) {
     return NextResponse.json(
       {
         error: "internal_error",
-        message: error.message,
+        message: isProduction() ? "Internal server error" : error.message,
       },
       { status: 500 },
     );

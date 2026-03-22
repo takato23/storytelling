@@ -122,6 +122,27 @@ export async function createOrderDraft(
     }
   }
 
+  const previewImageUrl =
+    typeof params.personalizationPayload.preview_image_url === "string"
+      ? params.personalizationPayload.preview_image_url
+      : null;
+
+  if (previewImageUrl) {
+    const { error: previewAssetError } = await adminClient.from("digital_assets").upsert(
+      {
+        order_id: orderId,
+        asset_type: "preview_lowres",
+        url: previewImageUrl,
+        status: "available",
+      },
+      { onConflict: "order_id,asset_type" },
+    );
+
+    if (previewAssetError) {
+      throw new Error(previewAssetError.message);
+    }
+  }
+
   await insertOrderEvent(adminClient, {
     orderId,
     eventType: "order_created",

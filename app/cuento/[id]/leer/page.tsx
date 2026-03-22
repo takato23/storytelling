@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { buildPersonalizedStory } from "@/lib/digital-story";
 import { rowsToStoryPages } from "@/lib/generated-pages";
 import { hasSupabaseCredentials } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -42,7 +41,17 @@ export default async function ReadOrderStoryPage(props: PageProps) {
     notFound();
   }
 
-  const allowedStatuses = new Set(["ready_digital", "print_queued", "in_production", "packed", "shipped", "delivered"]);
+  const allowedStatuses = new Set([
+    "ready_digital",
+    "qa_pending",
+    "ready_print_assets",
+    "qa_failed",
+    "print_queued",
+    "in_production",
+    "packed",
+    "shipped",
+    "delivered",
+  ]);
   if (!allowedStatuses.has(String(order.status))) {
     return (
       <main className="min-h-screen bg-cream-50 px-4 py-10">
@@ -64,7 +73,7 @@ export default async function ReadOrderStoryPage(props: PageProps) {
     supabase.from("personalizations").select("child_profile,personalization_payload").eq("order_id", id).maybeSingle(),
     supabase
       .from("generated_pages")
-      .select("page_number,prompt_used,image_url")
+      .select("page_number,prompt_used,image_url,status")
       .eq("order_id", id)
       .order("page_number", { ascending: true }),
   ]);
@@ -74,24 +83,26 @@ export default async function ReadOrderStoryPage(props: PageProps) {
     : { data: null };
 
   const childProfile = personalization?.child_profile as Record<string, unknown> | null;
-  const payload = personalization?.personalization_payload as Record<string, unknown> | null;
-
   const childName = String(childProfile?.name ?? childProfile?.child_name ?? "Peque aventurero");
-  const readingLevel = typeof payload?.reading_level === "string" ? payload.reading_level : null;
-  const familyMembers = Array.isArray(payload?.family_members)
-    ? (payload?.family_members as Array<{ name?: string }>)
-    : [];
   const storyTitle = String(story?.title ?? "Historia personalizada");
 
-  const pages =
-    generatedRows && generatedRows.length > 0
-      ? rowsToStoryPages(generatedRows)
-      : buildPersonalizedStory({
-          childName,
-          storyTitle,
-          readingLevel,
-          familyMembers,
-        });
+  if (!generatedRows || generatedRows.length === 0) {
+    return (
+      <main className="min-h-screen bg-cream-50 px-4 py-10">
+        <div className="mx-auto max-w-2xl rounded-2xl border border-amber-100 bg-amber-50 p-6">
+          <h1 className="text-2xl font-serif text-amber-900">Tu historia aún se está preparando</h1>
+          <p className="mt-2 text-amber-800">
+            Estamos terminando de publicar los archivos finales de tu pedido. Intentá nuevamente en unos minutos.
+          </p>
+          <Link href="/cuenta/pedidos" className="mt-4 inline-block text-sm font-semibold text-amber-900 underline">
+            Volver a mis pedidos
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  const pages = rowsToStoryPages(generatedRows);
 
   return (
     <main className="min-h-screen bg-cream-50 px-4 py-10">

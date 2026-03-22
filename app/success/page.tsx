@@ -7,10 +7,32 @@ import { Check, Home, Sparkles, BookOpen } from "lucide-react"
 
 export default function SuccessPage() {
     const [showContent, setShowContent] = useState(false)
+    const [orderNumber, setOrderNumber] = useState("0000")
+    const [particles, setParticles] = useState<
+        Array<{
+            key: number
+            x: number
+            y: number
+            duration: number
+            delay: number
+        }>
+    >([])
 
     useEffect(() => {
         // Clear cart on success
         localStorage.removeItem('storymagic_cart')
+
+        const width = window.innerWidth
+        const height = window.innerHeight
+        const generatedParticles = Array.from({ length: 20 }, (_, i) => ({
+            key: i,
+            x: Math.random() * width,
+            y: height,
+            duration: 3 + Math.random() * 2,
+            delay: Math.random() * 5,
+        }))
+        setParticles(generatedParticles)
+        setOrderNumber(Math.floor(Math.random() * 10000).toString().padStart(4, "0"))
 
         const timer = setTimeout(() => {
             setShowContent(true)
@@ -21,34 +43,34 @@ export default function SuccessPage() {
     return (
         <div className="min-h-screen bg-[#f5f0eb] flex items-center justify-center p-4 overflow-hidden relative">
             {/* Background Decorations */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3" />
-                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-rose-500/10 rounded-full blur-[100px] translate-y-1/3 -translate-x-1/3" />
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3" />
+                    <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-rose-500/10 rounded-full blur-[100px] translate-y-1/3 -translate-x-1/3" />
 
-                {/* Floating Particles */}
-                {Array.from({ length: 20 }).map((_, i) => (
-                    <motion.div
-                        key={i}
-                        className="absolute w-2 h-2 bg-yellow-400 rounded-full"
-                        initial={{
-                            x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1000),
-                            y: typeof window !== 'undefined' ? window.innerHeight : 1000,
-                            scale: 0
-                        }}
-                        animate={{
-                            y: -100,
-                            scale: [0, 1, 0],
-                            opacity: [0, 1, 0]
-                        }}
-                        transition={{
-                            duration: 3 + Math.random() * 2,
-                            repeat: Infinity,
-                            delay: Math.random() * 5,
-                            ease: "easeOut"
-                        }}
-                    />
-                ))}
-            </div>
+                    {/* Floating Particles */}
+                    {particles.map(({ key, x, y, duration, delay }) => (
+                        <motion.div
+                            key={key}
+                            className="absolute w-2 h-2 bg-yellow-400 rounded-full"
+                            initial={{
+                                x,
+                                y,
+                                scale: 0
+                            }}
+                            animate={{
+                                y: -100,
+                                scale: [0, 1, 0],
+                                opacity: [0, 1, 0]
+                            }}
+                            transition={{
+                                duration,
+                                repeat: Infinity,
+                                delay,
+                                ease: "easeOut"
+                            }}
+                        />
+                    ))}
+                </div>
 
             <motion.div
                 className="max-w-lg w-full bg-white/80 backdrop-blur-xl rounded-[40px] shadow-2xl p-10 border border-white text-center relative z-10"
@@ -113,7 +135,7 @@ export default function SuccessPage() {
                             🪄
                         </div>
                         <div>
-                            <h3 className="font-bold text-indigo-900">Orden #magic-{Math.floor(Math.random() * 10000)}</h3>
+                            <h3 className="font-bold text-indigo-900">Orden #magic-{orderNumber}</h3>
                             <p className="text-sm text-indigo-700/80 mt-1">
                                 Recibirás un correo con la confirmación y el enlace de seguimiento mágico.
                             </p>

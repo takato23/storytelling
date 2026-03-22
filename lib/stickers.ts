@@ -55,13 +55,28 @@ export const STICKER_STYLE_PRESETS: Record<
   },
 };
 
+export function filterAllowedStickerThemes(gender: StickerGender, themes: string[]) {
+  const allowed = new Set(STICKER_THEMES_BY_GENDER[gender]);
+  return Array.from(
+    new Set(
+      themes.filter((theme) =>
+        allowed.has(theme as (typeof STICKER_THEMES_BY_GENDER)[StickerGender][number]),
+      ),
+    ),
+  );
+}
+
+export function normalizeStickerThemes(gender: StickerGender, themes: string[]) {
+  return filterAllowedStickerThemes(gender, themes).slice(0, 6).sort((left, right) => left.localeCompare(right));
+}
+
 export function buildStickerPrompt(params: {
   childGender: StickerGender;
   themes: string[];
   styleId: StickerStyleId;
 }): string {
   const style = STICKER_STYLE_PRESETS[params.styleId] ?? STICKER_STYLE_PRESETS[DEFAULT_STICKER_STYLE_ID];
-  const themes = params.themes.slice(0, 6).join(", ");
+  const themes = normalizeStickerThemes(params.childGender, params.themes).join(", ");
 
   return [
     "Diseña una plancha de stickers infantiles premium con exactamente 6 stickers troquelables.",

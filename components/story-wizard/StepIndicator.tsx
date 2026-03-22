@@ -28,14 +28,14 @@ export function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
                             {step.id === currentStep && (
                                 <motion.div
                                     layoutId="stepGlow"
-                                    className="absolute inset-0 rounded-2xl bg-indigo-400/30 blur-lg"
+                                    className="absolute inset-0 rounded-2xl bg-[var(--play-primary-container)]/40 blur-lg"
                                     transition={{ duration: 0.5 }}
                                 />
                             )}
 
                             {step.id === currentStep && (
                                 <motion.div
-                                    className="absolute -inset-1 rounded-2xl border border-indigo-300/60"
+                                    className="absolute -inset-1 rounded-2xl border border-[var(--play-primary)]/40"
                                     animate={{ opacity: [0.2, 0.8, 0.2] }}
                                     transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
                                 />
@@ -56,7 +56,7 @@ export function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
                                 )}
                             </motion.div>
 
-                            <span className={`mt-2.5 text-[10px] font-extrabold uppercase tracking-[0.16em] transition-colors ${step.id === currentStep ? "text-indigo-700 block" : "text-charcoal-500/75 hidden sm:block"
+                            <span className={`mt-2.5 text-[10px] font-extrabold uppercase tracking-[0.16em] transition-colors ${step.id === currentStep ? "text-[var(--play-primary)] block" : "text-[var(--play-text-muted)] hidden sm:block"
                                 }`}>
                                 {step.title}
                             </span>
@@ -64,9 +64,9 @@ export function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
 
                         {/* Connector line */}
                         {index < steps.length - 1 && (
-                            <div className="relative w-7 md:w-14 h-1 rounded-full bg-white/30 border border-white/40 overflow-hidden">
+                            <div className="relative h-1 w-7 overflow-hidden rounded-full border border-white/60 bg-white/50 md:w-14">
                                 <motion.div
-                                    className="absolute inset-0 bg-gradient-to-r from-cyan-400 via-indigo-500 to-violet-500"
+                                    className="absolute inset-0 bg-[linear-gradient(90deg,var(--play-primary),#2d83dd,var(--play-primary-container))]"
                                     initial={false}
                                     animate={{
                                         scaleX: step.id < currentStep ? 1 : 0

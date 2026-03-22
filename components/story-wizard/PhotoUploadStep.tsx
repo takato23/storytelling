@@ -49,11 +49,11 @@ export function PhotoUploadStep({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
             >
-                <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-indigo-600/85 mb-3">Paso 1 de 6</p>
-                <h2 className="text-3xl md:text-4xl font-serif text-charcoal-900 mb-3">
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-[var(--play-primary)] mb-3">Paso 1 de 4</p>
+                <h2 className="play-title text-3xl md:text-4xl mb-3">
                     Sube la foto de tu pequeño héroe
                 </h2>
-                <p className="text-charcoal-600 max-w-2xl mx-auto">
+                <p className="play-copy max-w-2xl mx-auto">
                     Asegúrate de que el rostro se vea claramente para lograr una mejor personalización.
                 </p>
             </motion.div>

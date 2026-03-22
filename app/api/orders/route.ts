@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { handleRouteError } from "@/lib/api";
 import { requireAuthenticatedUser } from "@/lib/auth";
+import { getRequestId, logEvent, setRequestIdHeader } from "@/lib/observability";
 import { createOrderDraft } from "@/lib/orders";
 import {
   buildPricing,
@@ -11,9 +12,15 @@ import {
 import { createSupabaseAdminClient } from "@/lib/supabase";
 import { CreateOrderRequestSchema } from "@/lib/types";
 
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
+  const requestId = getRequestId(request);
+  const route = "/api/orders";
+
   try {
     const { user } = await requireAuthenticatedUser();
+    logEvent("info", "orders_create.request", { request_id: requestId, route, user_id: user.id });
     const payload = CreateOrderRequestSchema.parse(await request.json());
 
     const adminClient = createSupabaseAdminClient();
@@ -34,6 +41,7 @@ export async function POST(request: Request) {
       story,
       format: payload.format,
       currency: payload.currency,
+      printOptions: payload.print_options,
       fxRateUsdArs: fx.usd_to_ars,
       shippingFeeArs: shippingSelection?.feeArs ?? 0,
       shippingRuleId: shippingSelection?.ruleId ?? null,
@@ -56,7 +64,14 @@ export async function POST(request: Request) {
       shippingAddress: payload.shipping_address,
     });
 
-    return NextResponse.json(
+    logEvent("info", "orders_create.created", {
+      request_id: requestId,
+      route,
+      user_id: user.id,
+      order_id: orderId,
+    });
+
+    const response = NextResponse.json(
       {
         order_id: orderId,
         status: "draft",
@@ -65,7 +80,13 @@ export async function POST(request: Request) {
       },
       { status: 201 },
     );
+
+    return setRequestIdHeader(response, requestId);
   } catch (error) {
-    return handleRouteError(error);
+    logEvent("error", "orders_create.failed", { request_id: requestId, route }, {
+      message: error instanceof Error ? error.message : "Unexpected error",
+    });
+    const response = handleRouteError(error);
+    return setRequestIdHeader(response, requestId);
   }
 }

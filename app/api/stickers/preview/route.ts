@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { handleRouteError } from "@/lib/api";
+import { createStickerPreviewToken } from "@/lib/sticker-preview-token";
 import {
   evaluateStickerPreviewQuality,
   generateImageWithGemini,
@@ -11,8 +13,7 @@ import {
   DEFAULT_STICKER_STYLE_ID,
   STICKER_STYLE_IDS,
   STICKER_STYLE_PRESETS,
-  STICKER_THEMES_BY_GENDER,
-  type StickerGender,
+  filterAllowedStickerThemes,
   type StickerStyleId,
 } from "@/lib/stickers";
 
@@ -32,17 +33,6 @@ function stripDataUrlPrefix(base64: string) {
 function estimateBytesFromBase64(base64: string) {
   const clean = stripDataUrlPrefix(base64);
   return Math.ceil((clean.length * 3) / 4);
-}
-
-function filterAllowedThemes(gender: StickerGender, themes: string[]) {
-  const allowed = new Set(STICKER_THEMES_BY_GENDER[gender]);
-  return Array.from(
-    new Set(
-      themes.filter((theme) =>
-        allowed.has(theme as (typeof STICKER_THEMES_BY_GENDER)[StickerGender][number]),
-      ),
-    ),
-  );
 }
 
 function buildRetryPrompt(basePrompt: string, quality: StickerPreviewQualityResult) {
@@ -65,6 +55,11 @@ function buildRetryPrompt(basePrompt: string, quality: StickerPreviewQualityResu
 
 export async function POST(request: Request) {
   try {
+    const limited = enforceRateLimit(request, { key: "stickers_preview", limit: 4, windowMs: 60_000 });
+    if (limited) {
+      return limited;
+    }
+
     const payload = PreviewPayloadSchema.parse(await request.json());
     const styleId: StickerStyleId = payload.styleId;
 
@@ -79,7 +74,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const filteredThemes = filterAllowedThemes(payload.childGender, payload.themes);
+    const filteredThemes = filterAllowedStickerThemes(payload.childGender, payload.themes);
     if (filteredThemes.length === 0) {
       return NextResponse.json(
         {
@@ -145,9 +140,21 @@ export async function POST(request: Request) {
       }
     }
 
+    const approvedForCheckout = quality.pass;
+    const previewToken = approvedForCheckout
+      ? createStickerPreviewToken({
+          childGender: payload.childGender,
+          themes: filteredThemes,
+          styleId,
+          previewImageUrl: generated.imageDataUrl as string,
+        })
+      : null;
+
     return NextResponse.json({
       success: true,
       imageUrl: generated.imageDataUrl,
+      previewToken,
+      approvedForCheckout,
       childGender: payload.childGender,
       themes: filteredThemes,
       styleId,

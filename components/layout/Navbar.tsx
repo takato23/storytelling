@@ -2,12 +2,13 @@
 
 import React, { useEffect, useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
 import { LogOut, Menu, ShoppingBag, User, X } from "lucide-react"
 import { useCart } from "@/lib/contexts/CartContext"
 import { hasSupabaseCredentials } from "@/lib/supabase/env"
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
+import { ThemeToggle } from "@/components/ui/ThemeToggle"
 
 export function Navbar() {
     const { itemCount, toggleCart } = useCart()
@@ -17,6 +18,7 @@ export function Navbar() {
     const [userRole, setUserRole] = useState<"admin" | "customer" | null>(null)
 
     const router = useRouter()
+    const pathname = usePathname()
 
     useEffect(() => {
         const handleScroll = () => setIsScrolled(window.scrollY > 20)
@@ -86,107 +88,104 @@ export function Navbar() {
     }
 
     const navLinks = [
-        { name: "Home", href: "/" },
-        { name: "Libros", href: "/nuestros-libros" },
+        { name: "Inicio", href: "/" },
+        { name: "Cómo funciona", href: "/#como-funciona" },
         { name: "Stickers", href: "/stickers" },
-        { name: "My Books", href: "/cuenta/pedidos" },
-        { name: "Contacto", href: "/contacto" },
+        { name: "Catálogo", href: "/nuestros-libros" },
+        { name: "Mis cuentos", href: "/cuenta/pedidos" },
     ]
+
     const closeMobileMenu = () => setMobileMenuOpen(false)
+
+    const isActiveLink = (href: string) => {
+        if (!pathname) return false
+        if (href === "/") return pathname === "/"
+        return pathname === href || pathname.startsWith(`${href}/`)
+    }
 
     return (
         <>
-            <header
-                className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? "py-3" : "py-5"
-                    }`}
-            >
-                <div className="container mx-auto px-6">
-                    <div
-                        className={`relative overflow-hidden rounded-[28px] border backdrop-blur-2xl supports-[backdrop-filter]:backdrop-saturate-150 transition-all duration-300 ${isScrolled
-                            ? "bg-white/70 border-white/65 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.55),inset_0_1px_0_rgba(255,255,255,0.75)]"
-                            : "bg-white/45 border-white/55 shadow-[0_24px_56px_-34px_rgba(15,23,42,0.45),inset_0_1px_0_rgba(255,255,255,0.7)]"
-                            }`}
-                    >
-                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/45 via-white/15 to-transparent" />
-                        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/95 to-transparent" />
-                        <nav className="relative flex items-center justify-between px-4 sm:px-5 py-3">
-                            <Link href="/" className="relative z-50 flex items-center gap-3 group">
-                                <div className="relative w-11 h-11 rounded-[14px] border border-white/80 bg-white/55 backdrop-blur-xl shadow-[0_16px_30px_-18px_rgba(15,23,42,0.7),inset_0_1px_0_rgba(255,255,255,0.8)] transition-all duration-500 ease-out group-hover:scale-110 group-hover:-rotate-3">
-                                    <div className="absolute inset-[1px] rounded-[12px] bg-gradient-to-br from-white/65 via-white/20 to-transparent" />
-                                    <img
-                                        src="/logo-storymagic.png"
-                                        alt="StoryMagic Logo"
-                                        className="relative z-10 w-full h-full p-1.5 object-contain drop-shadow-[0_4px_6px_rgba(30,41,59,0.25)]"
-                                    />
+            <header className={`fixed left-0 right-0 top-0 z-50 transition-all duration-300 ${isScrolled ? "pt-3" : "pt-4"}`}>
+                <div className="mx-auto max-w-7xl px-4 md:px-6">
+                    <div className="play-nav-shell">
+                        <nav className="flex items-center justify-between gap-4 px-4 py-3 md:px-5">
+                            <Link href="/" className="flex items-center gap-3" onClick={closeMobileMenu}>
+                                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--play-primary)] text-lg shadow-[0_10px_20px_-14px_rgba(0,93,167,0.55)]">
+                                    <span className="text-white">✨</span>
                                 </div>
-                                <span className="text-xl font-bold tracking-tight text-charcoal-900 transition-all duration-300 group-hover:text-coral-500">
-                                    StoryMagic
-                                </span>
+                                <div className="leading-none">
+                                    <p className="text-xl font-black tracking-tight text-[var(--play-primary)]">El Cuento Mágico</p>
+                                    <p className="hidden text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--play-text-muted)] md:block">
+                                        Historias personalizadas
+                                    </p>
+                                </div>
                             </Link>
 
-                            <div className="hidden lg:flex items-center gap-8">
+                            <div className="hidden items-center gap-2 lg:flex">
                                 {navLinks.map((link) => (
                                     <Link
                                         key={link.name}
                                         href={link.href}
-                                        onClick={closeMobileMenu}
-                                        className={`px-3 py-2 rounded-xl text-sm font-semibold transition-all ${isScrolled
-                                            ? "text-charcoal-700 hover:text-coral-500 hover:bg-white/55"
-                                            : "text-charcoal-800 hover:text-coral-500 hover:bg-white/45"
-                                            }`}
+                                        className={`play-nav-link ${isActiveLink(link.href) ? "play-nav-link-active" : ""}`}
                                     >
                                         {link.name}
                                     </Link>
                                 ))}
                             </div>
 
-                            <div className="flex items-center gap-2 sm:gap-4">
+                            <div className="flex items-center gap-2 md:gap-3">
+                                <ThemeToggle />
+
+                                <Link
+                                    href="/crear"
+                                    className="gummy-button play-secondary-button hidden items-center gap-2 px-5 py-3 text-sm lg:inline-flex"
+                                >
+                                    <span>✨</span>
+                                    Crear cuento
+                                </Link>
+
                                 {userEmail ? (
-                                    <div className="hidden sm:flex items-center gap-3">
+                                    <div className="hidden items-center gap-3 sm:flex">
                                         {userRole === "admin" && (
-                                            <Link
-                                                href="/admin"
-                                                className="flex items-center gap-2 text-sm font-medium text-charcoal-700 hover:text-coral-500 transition-colors"
-                                            >
-                                                <span>Backoffice</span>
+                                            <Link href="/admin" className="text-sm font-semibold text-[var(--play-text-muted)] transition-colors hover:text-[var(--play-primary)]">
+                                                Backoffice
                                             </Link>
                                         )}
                                         <button
                                             onClick={handleSignOut}
-                                            className="flex items-center gap-2 text-sm font-medium text-charcoal-700 hover:text-coral-500 transition-colors"
+                                            className="flex items-center gap-2 text-sm font-semibold text-[var(--play-text-muted)] transition-colors hover:text-[var(--play-primary)]"
                                         >
-                                            <LogOut className="w-4 h-4" />
+                                            <LogOut className="h-4 w-4" />
                                             <span>Salir</span>
                                         </button>
                                     </div>
                                 ) : (
                                     <Link
                                         href="/login"
-                                        onClick={closeMobileMenu}
-                                        className="hidden sm:flex items-center gap-2 text-sm font-medium text-charcoal-700 hover:text-coral-500 transition-colors"
+                                        className="hidden items-center gap-2 text-sm font-semibold text-[var(--play-text-muted)] transition-colors hover:text-[var(--play-primary)] sm:flex"
                                     >
-                                        <User className="w-5 h-5" />
+                                        <User className="h-5 w-5" />
                                         <span>Entrar</span>
                                     </Link>
                                 )}
 
                                 <button
                                     onClick={toggleCart}
-                                    className="relative p-2.5 rounded-xl border border-white/65 bg-white/45 hover:bg-white/70 transition-all text-charcoal-700 group shadow-[0_12px_20px_-16px_rgba(15,23,42,0.7)]"
+                                    className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--play-outline)] bg-[var(--play-surface-lowest)] text-[var(--play-text-muted)] shadow-[0_10px_24px_-18px_rgba(0,93,167,0.2)] transition-all hover:scale-[1.03] hover:text-[var(--play-primary)]"
                                 >
-                                    <ShoppingBag className="w-5 h-5 group-hover:text-coral-500 transition-colors" />
+                                    <ShoppingBag className="h-5 w-5" />
                                     {itemCount > 0 && (
-                                        <span className="absolute top-0 right-0 w-4 h-4 bg-coral-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-scale-in">
+                                        <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--play-primary)] text-[10px] font-bold text-white">
                                             {itemCount}
                                         </span>
                                     )}
                                 </button>
 
                                 <button
-                                    className="lg:hidden p-2.5 rounded-xl border border-white/65 bg-white/50 text-charcoal-700 shadow-[0_12px_20px_-16px_rgba(15,23,42,0.7)]"
-                                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                                    onClick={() => setMobileMenuOpen((prev) => !prev)}
+                                    className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--play-outline)] bg-[var(--play-surface-lowest)] text-[var(--play-text-muted)] shadow-[0_10px_24px_-18px_rgba(0,93,167,0.2)] transition-all hover:scale-[1.03] lg:hidden"
                                 >
-                                    {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                                    {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                                 </button>
                             </div>
                         </nav>
@@ -197,39 +196,57 @@ export function Navbar() {
             <AnimatePresence>
                 {mobileMenuOpen && (
                     <motion.div
-                        initial={{ opacity: 0, x: "100%" }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: "100%" }}
-                        transition={{ type: "tween", duration: 0.3 }}
-                        className="fixed inset-0 z-40 bg-slate-900/25 backdrop-blur-sm pt-24 px-3 lg:hidden"
+                        initial={{ opacity: 0, y: -12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.22 }}
+                        className="fixed inset-0 z-40 bg-[#f6f6ff]/88 px-4 pb-6 pt-24 backdrop-blur-md lg:hidden"
                     >
-                        <div className="h-full rounded-[28px] border border-white/60 bg-white/75 backdrop-blur-2xl shadow-[0_25px_60px_-25px_rgba(15,23,42,0.65)] p-6 flex flex-col gap-6 text-lg font-medium overflow-y-auto">
+                        <div className="play-panel flex h-full flex-col gap-5 overflow-y-auto p-6">
+                            <Link
+                                href="/crear"
+                                onClick={closeMobileMenu}
+                                className="gummy-button play-secondary-button inline-flex items-center justify-center gap-2 px-5 py-4 text-base"
+                            >
+                                <span>✨</span>
+                                Crear cuento
+                            </Link>
+
                             {navLinks.map((link) => (
                                 <Link
                                     key={link.name}
                                     href={link.href}
                                     onClick={closeMobileMenu}
-                                    className="text-charcoal-800 border-b border-charcoal-100 pb-4"
+                                    className={`rounded-2xl border px-4 py-3 text-base font-bold ${
+                                        isActiveLink(link.href)
+                                            ? "border-[var(--play-primary)] bg-[var(--play-primary-container)]/20 text-[var(--play-primary)]"
+                                            : "border-[var(--play-outline)] bg-[var(--play-surface-lowest)] text-[var(--play-text-main)]"
+                                    }`}
                                 >
                                     {link.name}
                                 </Link>
                             ))}
+
                             {userEmail ? (
                                 <>
                                     {userRole === "admin" && (
-                                        <Link href="/admin" className="text-charcoal-800 border-b border-charcoal-100 pb-4">
+                                        <Link href="/admin" onClick={closeMobileMenu} className="rounded-2xl border border-[var(--play-outline)] bg-[var(--play-surface-lowest)] px-4 py-3 text-base font-bold text-[var(--play-text-main)]">
                                             Backoffice
                                         </Link>
                                     )}
                                     <button
                                         onClick={handleSignOut}
-                                        className="text-left text-charcoal-800 border-b border-charcoal-100 pb-4"
+                                        className="rounded-2xl border border-[var(--play-outline)] bg-[var(--play-surface-lowest)] px-4 py-3 text-left text-base font-bold text-[var(--play-text-main)]"
                                     >
                                         Salir
                                     </button>
                                 </>
                             ) : (
-                                <Link href="/login" className="text-charcoal-800 border-b border-charcoal-100 pb-4">
+                                <Link
+                                    href="/login"
+                                    onClick={closeMobileMenu}
+                                    className="rounded-2xl border border-[var(--play-outline)] bg-[var(--play-surface-lowest)] px-4 py-3 text-base font-bold text-[var(--play-text-main)]"
+                                >
                                     Entrar
                                 </Link>
                             )}

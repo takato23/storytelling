@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import { Music, Volume2, VolumeX } from "lucide-react"
 import { useBedtime } from "./BedtimeContext"
 
@@ -19,7 +19,7 @@ export function SoothingPlayer() {
         } else {
             if (audioRef.current) {
                 audioRef.current.pause()
-                setIsPlaying(false)
+                requestAnimationFrame(() => setIsPlaying(false))
             }
         }
     }, [isBedtimeEnabled])
@@ -52,11 +52,11 @@ export function SoothingPlayer() {
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-6 right-6 z-50 flex items-center gap-4 p-4 rounded-2xl bg-indigo-950/90 backdrop-blur-md border border-indigo-800 text-indigo-100 shadow-2xl"
+            className="fixed bottom-5 right-5 z-40 flex items-center gap-4 rounded-2xl border border-purple-200/70 bg-white/88 p-4 text-charcoal-800 shadow-[0_18px_40px_-24px_rgba(38,25,44,0.45)] backdrop-blur-md"
         >
             <div className="flex flex-col">
-                <span className="text-xs font-medium text-indigo-300 uppercase tracking-wider">Modo Sueño</span>
-                <span className="text-sm font-bold">Música Relajante</span>
+                <span className="text-xs font-medium uppercase tracking-wider text-purple-500">Modo Sueño</span>
+                <span className="text-sm font-bold">Música relajante</span>
             </div>
 
             {/* <audio
@@ -70,7 +70,7 @@ export function SoothingPlayer() {
             <div className="flex items-center gap-2">
                 <button
                     onClick={togglePlay}
-                    className="w-10 h-10 rounded-full bg-indigo-700 hover:bg-indigo-600 flex items-center justify-center transition-colors"
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-charcoal-900 text-white transition-colors hover:bg-purple-700"
                 >
                     {isPlaying ? (
                         <span className="w-3 h-3 bg-white rounded-sm" /> // Pause icon (square)
@@ -79,7 +79,7 @@ export function SoothingPlayer() {
                     )}
                 </button>
 
-                <button onClick={toggleMute} className="p-2 text-indigo-400 hover:text-white transition-colors">
+                <button onClick={toggleMute} className="p-2 text-purple-400 transition-colors hover:text-charcoal-900">
                     {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                 </button>
             </div>

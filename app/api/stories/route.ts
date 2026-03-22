@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getEnv } from "@/lib/config";
 import { STORIES } from "@/lib/stories";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 
@@ -31,11 +32,31 @@ export async function GET() {
       .order("id", { ascending: true });
 
     if (error) {
+      if (!getEnv().allowStoryFallback) {
+        return NextResponse.json(
+          {
+            error: "stories_unavailable",
+            message: "Stories catalog is unavailable",
+          },
+          { status: 503 },
+        );
+      }
+
       return NextResponse.json({ stories: buildFallbackStories(), source: "fallback" });
     }
 
     return NextResponse.json({ stories: data ?? [], source: "supabase" });
   } catch {
+    if (!getEnv().allowStoryFallback) {
+      return NextResponse.json(
+        {
+          error: "stories_unavailable",
+          message: "Stories catalog is unavailable",
+        },
+        { status: 503 },
+      );
+    }
+
     return NextResponse.json({ stories: buildFallbackStories(), source: "fallback" });
   }
 }

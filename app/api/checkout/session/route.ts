@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleRouteError } from "@/lib/api";
+import { getBaseUrl } from "@/lib/config";
 import { ApiError, requireAuthenticatedUser } from "@/lib/auth";
 import { checkoutPayloadSchema, createOrderQuote } from "@/lib/checkout";
 import { getRequestId, logEvent, setRequestIdHeader } from "@/lib/observability";
@@ -13,9 +14,7 @@ import { getStripeClient } from "@/lib/stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 import { CreateCheckoutSessionRequestSchema } from "@/lib/types";
 
-function getBaseUrl(request: Request) {
-  return process.env.NEXT_PUBLIC_SITE_URL || request.headers.get("origin") || new URL(request.url).origin;
-}
+export const runtime = "nodejs";
 
 async function createStripeCheckoutForCart(
   user: { id: string; email?: string | null },

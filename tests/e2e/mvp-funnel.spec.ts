@@ -121,3 +121,20 @@ test("redirects to login when checkout requires auth", async ({ page }) => {
   await page.getByRole("button", { name: /Pagar/ }).click();
   await expect(page).toHaveURL(/\/login\?next=/);
 });
+
+
+test("seo endpoints and security headers are exposed", async ({ page, request }) => {
+  const robots = await request.get("/robots.txt");
+  expect(robots.ok()).toBeTruthy();
+  expect(await robots.text()).toContain("User-agent");
+
+  const sitemap = await request.get("/sitemap.xml");
+  expect(sitemap.ok()).toBeTruthy();
+  expect(await sitemap.text()).toContain("<urlset");
+
+  const home = await page.goto("/");
+  expect(home).not.toBeNull();
+  expect(home?.headers()["x-frame-options"]).toBe("DENY");
+  expect(home?.headers()["x-content-type-options"]).toBe("nosniff");
+  expect(home?.headers()["content-security-policy"]).toContain("default-src 'self'");
+});

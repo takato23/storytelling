@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { getStripeConfig } from "@/lib/config";
 
 let stripeClient: Stripe | null = null;
 
@@ -7,7 +8,7 @@ export function getStripeClient(): Stripe {
     return stripeClient;
   }
 
-  const secretKey = process.env.STRIPE_SECRET_KEY;
+  const { secretKey } = getStripeConfig();
   if (!secretKey) {
     throw new Error("Missing STRIPE_SECRET_KEY");
   }
@@ -17,7 +18,7 @@ export function getStripeClient(): Stripe {
 }
 
 export function getStripeWebhookSecret(): string {
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const { webhookSecret } = getStripeConfig();
   if (!webhookSecret) {
     throw new Error("Missing STRIPE_WEBHOOK_SECRET");
   }

@@ -14,7 +14,8 @@ type RouteContext = {
 };
 
 const ORDER_STATUS_BY_PRINT_STATUS: Record<string, string> = {
-  queued: "print_queued",
+  review_required: "qa_pending",
+  approved: "ready_print_assets",
   in_production: "in_production",
   packed: "packed",
   shipped: "shipped",

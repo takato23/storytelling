@@ -26,11 +26,11 @@ export function StorySelectionStep({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
             >
-                <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-indigo-600/85 mb-3">Selección de historia</p>
-                <h2 className="text-3xl md:text-4xl font-serif text-charcoal-900 mb-2">
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-[var(--play-primary)] mb-3">Paso 3 de 4</p>
+                <h2 className="play-title text-3xl md:text-4xl mb-2">
                     Elige la aventura perfecta
                 </h2>
-                <p className="text-charcoal-600">
+                <p className="play-copy">
                     Cada historia es única y emocionante
                 </p>
             </motion.div>
@@ -43,14 +43,14 @@ export function StorySelectionStep({
                 />
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid gap-6 md:grid-cols-2">
                 {STORIES.map((story, index) => (
                     <motion.div
                         key={story.id}
                         onClick={() => onSelect(story.id)}
                         className={`relative rounded-3xl overflow-hidden cursor-pointer transition-all border group ${selectedStory === story.id
-                            ? "border-indigo-300/80 bg-gradient-to-br from-white to-indigo-50/80 ring-4 ring-indigo-300/20 shadow-[0_22px_38px_-24px_rgba(79,70,229,0.8)] scale-[1.015]"
-                            : "wizard-liquid-soft border-white/70 hover:bg-white/75 hover:shadow-[0_20px_36px_-24px_rgba(79,70,229,0.6)] hover:-translate-y-0.5 hover:border-indigo-200/70"
+                            ? "border-[var(--play-primary)] bg-[var(--play-primary-container)]/16 ring-4 ring-[var(--play-primary-container)]/20 shadow-[0_22px_38px_-24px_rgba(0,93,167,0.32)] scale-[1.015]"
+                            : "play-card-soft hover:-translate-y-0.5 hover:border-[var(--play-primary)]/35 hover:shadow-[0_20px_36px_-24px_rgba(0,93,167,0.22)]"
                             }`}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -59,32 +59,32 @@ export function StorySelectionStep({
                         <div className="p-6 flex flex-col h-full relative z-10">
                             <div className="flex items-start gap-5">
                                 <motion.div
-                                    className="w-20 h-20 rounded-2xl flex items-center justify-center text-5xl shadow-sm bg-gradient-to-br from-white to-indigo-50 border border-white/90"
+                                    className="flex h-20 w-20 items-center justify-center rounded-2xl bg-[var(--play-surface-low)] text-5xl shadow-sm"
                                     animate={selectedStory === story.id ? { rotate: [0, 5, -5, 0], scale: 1.08 } : {}}
                                     transition={{ duration: 0.5 }}
                                 >
                                     {story.icon}
                                 </motion.div>
                                 <div className="flex-1">
-                                    <h3 className="text-xl font-bold text-charcoal-900 mb-2 leading-tight">
+                                    <h3 className="mb-2 text-xl font-bold leading-tight text-[var(--play-text-main)]">
                                         {story.title}
                                     </h3>
-                                    <span className="inline-block px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-bold uppercase tracking-wider rounded-md mb-3 border border-indigo-100/80">
+                                    <span className="mb-3 inline-block rounded-full bg-[var(--play-surface-low)] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--play-primary)]">
                                         {story.ages}
                                     </span>
-                                    <p className="text-charcoal-600 text-sm leading-relaxed mb-4">
+                                    <p className="mb-4 text-sm leading-relaxed text-[var(--play-text-muted)]">
                                         {story.shortDescription}
                                     </p>
                                 </div>
                             </div>
 
                             {/* Decorative background blur */}
-                            <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-br from-indigo-200/35 via-sky-200/25 to-cyan-200/25 rounded-full blur-3xl -z-10" />
+                            <div className="absolute top-0 right-0 -z-10 h-36 w-36 rounded-full bg-[var(--play-primary-container)]/24 blur-3xl" />
                         </div>
 
                         {selectedStory === story.id && (
                             <motion.div
-                                className="absolute top-4 right-4 w-8 h-8 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/35"
+                                className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--play-primary)] text-white shadow-lg shadow-[rgba(0,93,167,0.25)]"
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
                             >

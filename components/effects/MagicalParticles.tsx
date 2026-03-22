@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useRef, useMemo, useEffect } from "react"
+import React, { useRef, useMemo, useEffect, useState } from "react"
 import { Canvas, useFrame } from "@react-three/fiber"
 import * as THREE from "three"
 
@@ -142,6 +142,14 @@ interface MagicalParticlesProps {
 export function MagicalParticles({
     className = "",
 }: MagicalParticlesProps) {
+    const [isClient, setIsClient] = useState(false)
+
+    useEffect(() => {
+        setIsClient(true)
+    }, [])
+
+    if (!isClient) return null
+
     return (
         <div className={`absolute inset-0 pointer-events-none ${className}`}>
             <Canvas

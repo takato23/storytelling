@@ -46,6 +46,7 @@ export async function GET(_request: Request, context: RouteContext) {
       { data: events, error: eventsError },
       { data: assets, error: assetsError },
       { data: generationJobs, error: generationJobsError },
+      { data: generatedPages, error: generatedPagesError },
       { data: printJob, error: printJobError },
       { data: shipping, error: shippingError },
     ] = await Promise.all([
@@ -55,6 +56,7 @@ export async function GET(_request: Request, context: RouteContext) {
       adminClient.from("order_events").select("*").eq("order_id", id).order("created_at", { ascending: true }),
       adminClient.from("digital_assets").select("*").eq("order_id", id),
       adminClient.from("generation_jobs").select("*").eq("order_id", id).order("created_at", { ascending: false }),
+      adminClient.from("generated_pages").select("*").eq("order_id", id).order("page_number", { ascending: true }),
       adminClient.from("print_jobs").select("*").eq("order_id", id).maybeSingle(),
       adminClient.from("shipping_addresses").select("*").eq("order_id", id).maybeSingle(),
     ]);
@@ -66,6 +68,7 @@ export async function GET(_request: Request, context: RouteContext) {
       eventsError ||
       assetsError ||
       generationJobsError ||
+      generatedPagesError ||
       printJobError ||
       shippingError
     ) {
@@ -76,6 +79,7 @@ export async function GET(_request: Request, context: RouteContext) {
           eventsError?.message ||
           assetsError?.message ||
           generationJobsError?.message ||
+          generatedPagesError?.message ||
           printJobError?.message ||
           shippingError?.message ||
           "Failed to load order details",
@@ -90,6 +94,7 @@ export async function GET(_request: Request, context: RouteContext) {
       events: events ?? [],
       digital_assets: assets ?? [],
       generation_jobs: generationJobs ?? [],
+      generated_pages: generatedPages ?? [],
       print_job: printJob ?? null,
       shipping_address: shipping ?? null,
     });

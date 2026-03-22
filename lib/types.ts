@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_PRINT_PRODUCT_ID } from "@/lib/print-products";
 
 export const CurrencySchema = z.enum(["USD", "ARS"]);
 export type Currency = z.infer<typeof CurrencySchema>;
@@ -10,9 +11,8 @@ export const PaymentProviderSchema = z.enum(["mercadopago", "stripe"]);
 export type PaymentProvider = z.infer<typeof PaymentProviderSchema>;
 
 export const PrintOptionsSchema = z.object({
-  coverType: z.enum(["soft", "hard", "premium"]).optional(),
-  paperType: z.enum(["standard", "glossy"]).optional(),
-  giftBox: z.boolean().optional(),
+  productId: z.enum(["photo_book_21x14_8_hard", "photo_book_27_9x21_6_hard"]).default(DEFAULT_PRINT_PRODUCT_ID),
+  includeGiftWrap: z.boolean().default(false),
 });
 export type PrintOptions = z.infer<typeof PrintOptionsSchema>;
 
@@ -33,7 +33,10 @@ export const CreateOrderRequestSchema = z
     child_profile: z.record(z.string(), z.unknown()).default({}),
     personalization_payload: z.record(z.string(), z.unknown()).default({}),
     format: OrderFormatSchema,
-    print_options: PrintOptionsSchema.default({}),
+    print_options: PrintOptionsSchema.default({
+      productId: DEFAULT_PRINT_PRODUCT_ID,
+      includeGiftWrap: false,
+    }),
     currency: CurrencySchema,
     payment_provider: PaymentProviderSchema.default("mercadopago"),
     shipping_address: ShippingAddressSchema.optional(),
@@ -54,7 +57,10 @@ export const OrderQuoteRequestSchema = z
     order_id: z.string().uuid().optional(),
     story_id: z.string().min(1),
     format: OrderFormatSchema,
-    print_options: PrintOptionsSchema.default({}),
+    print_options: PrintOptionsSchema.default({
+      productId: DEFAULT_PRINT_PRODUCT_ID,
+      includeGiftWrap: false,
+    }),
     shipping_address: ShippingAddressSchema.optional(),
     currency: CurrencySchema,
   })
@@ -81,7 +87,8 @@ export const AdminFxRateRequestSchema = z.object({
 export type AdminFxRateRequest = z.infer<typeof AdminFxRateRequestSchema>;
 
 export const PrintJobStatusSchema = z.enum([
-  "queued",
+  "review_required",
+  "approved",
   "in_production",
   "packed",
   "shipped",
@@ -101,7 +108,8 @@ export const PrintJobTransitionRequestSchema = z.object({
 export type PrintJobTransitionRequest = z.infer<typeof PrintJobTransitionRequestSchema>;
 
 export const VALID_PRINT_JOB_TRANSITIONS: Record<PrintJobStatus, PrintJobStatus[]> = {
-  queued: ["in_production", "failed", "cancelled"],
+  review_required: ["approved", "failed", "cancelled"],
+  approved: ["in_production", "failed", "cancelled"],
   in_production: ["packed", "failed", "cancelled"],
   packed: ["shipped", "failed", "cancelled"],
   shipped: ["delivered", "failed"],

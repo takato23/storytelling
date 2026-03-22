@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { ArrowUpDown, Calendar, Check, DollarSign, RefreshCcw, TrendingUp } from "lucide-react";
 
 interface FxRateRow {
   date: string;
@@ -84,92 +84,128 @@ export default function AdminFxRatesPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-cream-50 px-4 py-10">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-serif text-charcoal-900">FX Diario USD/ARS</h1>
-          <Link href="/admin" className="text-sm font-semibold text-indigo-700 hover:underline">
-            Volver al backoffice
-          </Link>
+    <main className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-white">Tipo de cambio</h1>
+          <p className="mt-1 text-sm text-white/40">Cotización diaria USD/ARS para el checkout.</p>
+        </div>
+        <button
+          onClick={() => void loadRates()}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.05] px-3.5 py-2 text-xs font-semibold text-white/60 transition hover:bg-white/[0.08] hover:text-white/80"
+        >
+          <RefreshCcw className="h-3.5 w-3.5" />
+          Refrescar
+        </button>
+      </div>
+
+      {/* Form */}
+      <form
+        onSubmit={handleSubmit}
+        className="grid gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5 md:grid-cols-[1fr_1.5fr_auto]"
+      >
+        <div>
+          <label htmlFor="fx-date" className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-white/40">
+            <Calendar className="h-3 w-3" />
+            Fecha
+          </label>
+          <input
+            id="fx-date"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            required
+            className="w-full rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2.5 text-sm text-white/80 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+          />
+        </div>
+        <div>
+          <label htmlFor="fx-rate" className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-white/40">
+            <ArrowUpDown className="h-3 w-3" />
+            USD a ARS
+          </label>
+          <input
+            id="fx-rate"
+            type="number"
+            inputMode="decimal"
+            min="0.0001"
+            step="0.0001"
+            placeholder="Ej: 1250.50"
+            value={rate}
+            onChange={(e) => setRate(e.target.value)}
+            required
+            className="w-full rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2.5 text-sm text-white/80 placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+          />
+        </div>
+        <div className="self-end">
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-charcoal-900 shadow-md shadow-black/20 transition hover:-translate-y-0.5 disabled:opacity-60"
+          >
+            {loading ? "Guardando..." : "Guardar"}
+          </button>
+        </div>
+      </form>
+
+      {error && (
+        <p className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+          {error}
+        </p>
+      )}
+      {success && (
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+          <Check className="h-4 w-4" />
+          {success}
+        </div>
+      )}
+
+      {/* History table */}
+      <section className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-white/40" />
+          <h2 className="text-sm font-semibold text-white/70">Últimas cotizaciones</h2>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid gap-3 rounded-2xl border border-charcoal-100 bg-white p-5 md:grid-cols-4">
-          <div className="md:col-span-1">
-            <label htmlFor="fx-date" className="mb-1 block text-xs font-semibold uppercase text-charcoal-500">
-              Fecha
-            </label>
-            <input
-              id="fx-date"
-              type="date"
-              value={date}
-              onChange={(event) => setDate(event.target.value)}
-              required
-              className="w-full rounded-lg border border-charcoal-200 px-3 py-2"
-            />
+        {fetching ? (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-10 animate-pulse rounded-lg bg-white/[0.03]" />
+            ))}
           </div>
-          <div className="md:col-span-2">
-            <label htmlFor="fx-rate" className="mb-1 block text-xs font-semibold uppercase text-charcoal-500">
-              USD a ARS
-            </label>
-            <input
-              id="fx-rate"
-              type="number"
-              inputMode="decimal"
-              min="0.0001"
-              step="0.0001"
-              placeholder="Ej: 1250.50"
-              value={rate}
-              onChange={(event) => setRate(event.target.value)}
-              required
-              className="w-full rounded-lg border border-charcoal-200 px-3 py-2"
-            />
-          </div>
-          <div className="md:col-span-1 md:self-end">
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-indigo-950 px-4 py-2 font-semibold text-white disabled:opacity-60"
-            >
-              {loading ? "Guardando..." : "Guardar"}
-            </button>
-          </div>
-        </form>
-
-        {error && <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-        {success && (
-          <p className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{success}</p>
-        )}
-
-        <section className="rounded-2xl border border-charcoal-100 bg-white p-5">
-          <h2 className="mb-4 text-lg font-semibold text-charcoal-900">Últimas cotizaciones</h2>
-          {fetching ? (
-            <p className="text-sm text-charcoal-500">Cargando...</p>
-          ) : rows.length === 0 ? (
-            <p className="text-sm text-charcoal-500">Sin registros cargados.</p>
-          ) : (
-            <div className="overflow-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-charcoal-100 text-left text-charcoal-500">
-                    <th className="py-2 pr-3 font-medium">Fecha</th>
-                    <th className="py-2 pr-3 font-medium">USD/ARS</th>
-                    <th className="py-2 pr-3 font-medium">Actualizado</th>
+        ) : rows.length === 0 ? (
+          <p className="py-4 text-center text-sm text-white/30">Sin registros cargados.</p>
+        ) : (
+          <div className="overflow-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/[0.06] text-left">
+                  <th className="py-2.5 pr-4 text-xs font-semibold uppercase tracking-[0.1em] text-white/35">Fecha</th>
+                  <th className="py-2.5 pr-4 text-xs font-semibold uppercase tracking-[0.1em] text-white/35">USD/ARS</th>
+                  <th className="py-2.5 pr-4 text-xs font-semibold uppercase tracking-[0.1em] text-white/35">Actualizado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, i) => (
+                  <tr
+                    key={row.date}
+                    className={`border-b border-white/[0.03] text-white/70 transition hover:bg-white/[0.03] ${i === 0 ? "text-white font-medium" : ""}`}
+                  >
+                    <td className="py-2.5 pr-4">
+                      <div className="flex items-center gap-2">
+                        {i === 0 && <DollarSign className="h-3.5 w-3.5 text-emerald-400" />}
+                        {row.date}
+                      </div>
+                    </td>
+                    <td className="py-2.5 pr-4 tabular-nums">{Number(row.usd_to_ars).toLocaleString("es-AR")}</td>
+                    <td className="py-2.5 pr-4 text-white/40">{new Date(row.created_at).toLocaleString("es-AR")}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr key={row.date} className="border-b border-charcoal-50 text-charcoal-800">
-                      <td className="py-2 pr-3">{row.date}</td>
-                      <td className="py-2 pr-3">{Number(row.usd_to_ars).toLocaleString("es-AR")}</td>
-                      <td className="py-2 pr-3">{new Date(row.created_at).toLocaleString("es-AR")}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </main>
   );
 }

@@ -10,25 +10,27 @@ interface BedtimeContextType {
 const BedtimeContext = createContext<BedtimeContextType | undefined>(undefined)
 
 export function BedtimeProvider({ children }: { children: React.ReactNode }) {
-    const [isBedtimeEnabled, setIsBedtimeEnabled] = useState(false)
+    const [isBedtimeEnabled, setIsBedtimeEnabled] = useState(() => {
+        if (typeof window === "undefined") return false
+        return localStorage.getItem("bedtimeMode") === "true"
+    })
 
     useEffect(() => {
-        // Load preference from local storage
-        const saved = localStorage.getItem("bedtimeMode")
-        if (saved === "true") {
-            setIsBedtimeEnabled(true)
-            document.documentElement.classList.add("bedtime-mode", "dark")
+        if (isBedtimeEnabled) {
+            document.documentElement.classList.add("bedtime-mode")
+        } else {
+            document.documentElement.classList.remove("bedtime-mode")
         }
-    }, [])
+    }, [isBedtimeEnabled])
 
     const toggleBedtime = () => {
         setIsBedtimeEnabled(prev => {
             const newValue = !prev
             localStorage.setItem("bedtimeMode", String(newValue))
             if (newValue) {
-                document.documentElement.classList.add("bedtime-mode", "dark")
+                document.documentElement.classList.add("bedtime-mode")
             } else {
-                document.documentElement.classList.remove("bedtime-mode", "dark")
+                document.documentElement.classList.remove("bedtime-mode")
             }
             return newValue
         })

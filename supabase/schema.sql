@@ -23,6 +23,7 @@ drop table if exists public.orders cascade;
 drop table if exists public.fx_rates_daily cascade;
 drop table if exists public.story_locales cascade;
 drop table if exists public.stories cascade;
+drop table if exists public.preview_generation_usage cascade;
 drop table if exists public.profiles cascade;
 
 drop function if exists public.handle_new_user() cascade;
@@ -34,6 +35,8 @@ create table public.profiles (
   full_name text,
   phone text,
   role text not null default 'customer' check (role in ('customer', 'admin')),
+  free_preview_credits integer not null default 2 check (free_preview_credits >= 0),
+  free_preview_used integer not null default 0 check (free_preview_used >= 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -53,6 +56,19 @@ create table public.stories (
   target_gender text not null default 'unisex' check (target_gender in ('niña', 'niño', 'unisex')),
   print_specs jsonb not null default '{}'::jsonb,
   active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.preview_generation_usage (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  story_id text references public.stories(id) on delete set null,
+  image_hash text,
+  status text not null check (status in ('started', 'succeeded', 'failed')),
+  provider text,
+  model text,
+  error_message text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -101,6 +117,9 @@ create table public.orders (
       'pending_payment',
       'paid',
       'generating',
+      'qa_pending',
+      'ready_print_assets',
+      'qa_failed',
       'ready_digital',
       'print_queued',
       'in_production',
@@ -193,7 +212,7 @@ create table public.order_events (
 create table public.digital_assets (
   id uuid primary key default gen_random_uuid(),
   order_id uuid not null references public.orders(id) on delete cascade,
-  asset_type text not null check (asset_type in ('pdf', 'viewer', 'thumbnail')),
+  asset_type text not null check (asset_type in ('digital_pdf', 'viewer', 'thumbnail', 'print_pdf', 'print_zip', 'preview_lowres')),
   url text,
   status text not null check (status in ('pending', 'available', 'failed')),
   created_at timestamptz not null default now(),
@@ -217,8 +236,15 @@ create table public.generated_pages (
   id uuid primary key default gen_random_uuid(),
   order_id uuid not null references public.orders(id) on delete cascade,
   page_number integer not null check (page_number > 0),
+  page_type text not null default 'story_page' check (page_type in ('cover', 'dedication', 'story_page', 'ending', 'back_cover')),
+  render_purpose text not null default 'print_page' check (render_purpose in ('preview', 'viewer_page', 'print_page')),
   image_url text,
   prompt_used text,
+  width_px integer check (width_px is null or width_px > 0),
+  height_px integer check (height_px is null or height_px > 0),
+  status text not null default 'queued' check (status in ('queued', 'processing', 'ready', 'failed', 'approved')),
+  version integer not null default 1 check (version > 0),
+  error_message text,
   created_at timestamptz not null default now(),
   unique (order_id, page_number)
 );
@@ -283,7 +309,7 @@ create table public.sticker_orders (
 create table public.print_jobs (
   id uuid primary key default gen_random_uuid(),
   order_id uuid not null unique references public.orders(id) on delete cascade,
-  status text not null check (status in ('queued', 'in_production', 'packed', 'shipped', 'delivered', 'failed', 'cancelled')),
+  status text not null check (status in ('review_required', 'approved', 'in_production', 'packed', 'shipped', 'delivered', 'failed', 'cancelled')),
   tracking_number text,
   sla_due_at timestamptz,
   created_at timestamptz not null default now(),
@@ -301,6 +327,8 @@ create table public.webhook_events (
 );
 
 create index idx_orders_user_status_created on public.orders(user_id, status, created_at desc);
+create index idx_preview_generation_usage_user_created on public.preview_generation_usage(user_id, created_at desc);
+create index idx_preview_generation_usage_hash_created on public.preview_generation_usage(image_hash, created_at desc);
 create index idx_payments_payment_intent on public.payments(provider_payment_intent);
 create index idx_print_jobs_status_created on public.print_jobs(status, created_at desc);
 create index idx_order_items_order_id on public.order_items(order_id);
@@ -326,6 +354,8 @@ end;
 $$;
 
 create trigger set_updated_at_profiles before update on public.profiles
+for each row execute function public.set_updated_at();
+create trigger set_updated_at_preview_generation_usage before update on public.preview_generation_usage
 for each row execute function public.set_updated_at();
 create trigger set_updated_at_stories before update on public.stories
 for each row execute function public.set_updated_at();
@@ -392,6 +422,7 @@ after insert on auth.users
 for each row execute function public.handle_new_user();
 
 alter table public.profiles enable row level security;
+alter table public.preview_generation_usage enable row level security;
 alter table public.stories enable row level security;
 alter table public.story_locales enable row level security;
 alter table public.fx_rates_daily enable row level security;
@@ -416,6 +447,11 @@ create policy "profiles_owner_select" on public.profiles
 for select using (id = auth.uid() or public.is_admin());
 create policy "profiles_owner_update" on public.profiles
 for update using (id = auth.uid() or public.is_admin()) with check (id = auth.uid() or public.is_admin());
+
+create policy "preview_usage_owner_select" on public.preview_generation_usage
+for select using (user_id = auth.uid() or public.is_admin());
+create policy "preview_usage_admin_write" on public.preview_generation_usage
+for all using (public.is_admin()) with check (public.is_admin());
 
 create policy "stories_read" on public.stories
 for select using (active = true or public.is_admin());
