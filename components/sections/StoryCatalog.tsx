@@ -185,11 +185,11 @@ export function StoryCatalog({
                                                     <span className="text-[10px] font-black uppercase tracking-widest text-[var(--play-text-muted)]">{story.ages}</span>
                                                 </div>
 
-                                                <h3 className="mb-2 text-2xl font-black leading-tight text-[#112a50]">{story.title}</h3>
-                                                <p className="mb-4 text-sm font-medium leading-relaxed text-[#4b5b81]">{story.shortDescription}</p>
+                                                <h3 className="mb-2 text-2xl font-black leading-tight text-[var(--play-text-main)]">{story.title}</h3>
+                                                <p className="mb-4 text-sm font-medium leading-relaxed text-[var(--play-text-muted)]">{story.shortDescription}</p>
 
                                                 <div className="mt-auto flex items-center justify-between gap-4">
-                                                    <span className="flex items-center gap-1 text-sm font-bold text-[#705900]">
+                                                    <span className="flex items-center gap-1 text-sm font-bold text-[var(--play-secondary-strong)]">
                                                         <Star className="h-4 w-4 fill-current" />
                                                         {story.reviews[0]?.rating?.toFixed(1) ?? "4.9"}
                                                     </span>

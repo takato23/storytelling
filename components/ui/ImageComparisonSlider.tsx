@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useRef, useEffect, useCallback } from "react"
+import Image from "next/image"
 
 interface ImageComparisonSliderProps {
     beforeImage: string
@@ -8,6 +9,7 @@ interface ImageComparisonSliderProps {
     beforeLabel?: string
     afterLabel?: string
     className?: string
+    instructionText?: string
 }
 
 export function ImageComparisonSlider({
@@ -15,7 +17,8 @@ export function ImageComparisonSlider({
     afterImage,
     beforeLabel = "Original",
     afterLabel = "Magia IA",
-    className = ""
+    className = "",
+    instructionText = "Deslizá para ver el cambio"
 }: ImageComparisonSliderProps) {
     const [sliderPosition, setSliderPosition] = useState(50)
     const [isDragging, setIsDragging] = useState(false)
@@ -60,7 +63,7 @@ export function ImageComparisonSlider({
     return (
         <div
             ref={containerRef}
-            className={`relative w-full aspect-square md:aspect-[4/3] rounded-[2rem] overflow-hidden cursor-ew-resize select-none bg-charcoal-50 shadow-2xl border-[6px] border-white ${className}`}
+            className={`relative w-full aspect-[4/5] overflow-hidden rounded-[2rem] border border-[var(--nido-line)] bg-[var(--nido-paper-strong)] shadow-[0_24px_60px_-40px_rgba(93,84,76,0.36)] cursor-ew-resize select-none touch-pan-y sm:aspect-[5/4] md:aspect-[4/3] ${className}`}
             onMouseDown={(e) => {
                 setIsDragging(true)
                 handleMove(e.clientX)
@@ -72,7 +75,14 @@ export function ImageComparisonSlider({
         >
             {/* After Image (Background) */}
             <div className="absolute inset-0 w-full h-full">
-                <img src={afterImage} alt={afterLabel} className="w-full h-full object-cover" draggable={false} />
+                <Image
+                    src={afterImage}
+                    alt={afterLabel}
+                    fill
+                    sizes="(min-width: 1024px) 36rem, (min-width: 640px) 80vw, 100vw"
+                    className="object-cover"
+                    draggable={false}
+                />
             </div>
 
             {/* Before Image (Foreground/Clipped) */}
@@ -80,28 +90,35 @@ export function ImageComparisonSlider({
                 className="absolute inset-0 h-full w-full object-cover"
                 style={{ clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)` }}
             >
-                <img src={beforeImage} alt={beforeLabel} className="w-full h-full object-cover" draggable={false} />
+                <Image
+                    src={beforeImage}
+                    alt={beforeLabel}
+                    fill
+                    sizes="(min-width: 1024px) 36rem, (min-width: 640px) 80vw, 100vw"
+                    className="object-cover"
+                    draggable={false}
+                />
             </div>
 
             {/* Slider Handle */}
             <div
-                className="absolute top-0 bottom-0 w-1 bg-white flex items-center justify-center pointer-events-none"
+                className="absolute top-0 bottom-0 flex w-1 items-center justify-center bg-white/90 pointer-events-none"
                 style={{ left: `${sliderPosition}%`, transform: 'translateX(-50%)' }}
             >
-                <div className="w-10 h-10 rounded-full bg-white shadow-[0_0_20px_rgba(0,0,0,0.3)] flex items-center justify-center ring-4 ring-white/50">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-[0_0_20px_rgba(0,0,0,0.16)] ring-4 ring-white/60 sm:h-11 sm:w-11">
                     <div className="flex gap-1.5">
-                        <div className="w-0.5 h-4 bg-purple-400 rounded-full" />
-                        <div className="w-0.5 h-4 bg-purple-400 rounded-full" />
-                        <div className="w-0.5 h-4 bg-purple-400 rounded-full" />
+                        <div className="h-4 w-0.5 rounded-full bg-[var(--nido-sage-strong)]" />
+                        <div className="h-4 w-0.5 rounded-full bg-[var(--nido-sage-strong)]" />
+                        <div className="h-4 w-0.5 rounded-full bg-[var(--nido-sage-strong)]" />
                     </div>
                 </div>
             </div>
 
             {/* Labels */}
-            <div className="absolute top-4 left-4 px-4 py-1.5 bg-black/40 backdrop-blur-md rounded-full text-xs font-bold text-white tracking-widest uppercase pointer-events-none shadow-sm">
+            <div className="absolute left-3 top-3 rounded-full bg-white/86 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-[var(--nido-ink)] shadow-sm backdrop-blur-md pointer-events-none sm:left-4 sm:top-4 sm:px-4">
                 {beforeLabel}
             </div>
-            <div className="absolute top-4 right-4 px-4 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg text-white backdrop-blur-md rounded-full text-xs font-bold tracking-widest uppercase pointer-events-none">
+            <div className="absolute right-3 top-3 rounded-full bg-[var(--nido-sage-strong)] px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-white shadow-lg pointer-events-none sm:right-4 sm:top-4 sm:px-4">
                 {afterLabel}
             </div>
 
@@ -109,8 +126,8 @@ export function ImageComparisonSlider({
             <div
                 className={`absolute inset-0 pointer-events-none flex items-center justify-center transition-opacity duration-500 ${isDragging ? 'opacity-0' : 'opacity-100'}`}
             >
-                <div className="bg-white/90 backdrop-blur-sm text-purple-900 px-6 py-2 rounded-full font-bold text-sm shadow-xl animate-bounce mt-32">
-                    Desliza para ver la magia →
+                <div className="mt-32 rounded-full bg-white/92 px-5 py-2 text-center text-xs font-bold uppercase tracking-[0.18em] text-[var(--nido-ink)] shadow-xl backdrop-blur-sm sm:text-sm">
+                    {instructionText}
                 </div>
             </div>
         </div>

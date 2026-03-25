@@ -44,7 +44,7 @@ export default function StoryExactPage() {
     }
 
     return (
-        <main className="min-h-screen bg-[#f5f0eb]">
+        <main className="min-h-screen bg-[var(--background)] text-[var(--text-primary)]">
             {/* 1. HERO SECTION - Two Symmetric Glass Cards (Like Open Book Pages) */}
             <section className="relative min-h-screen flex items-center justify-center p-4 lg:p-8 overflow-hidden">
 
@@ -216,11 +216,11 @@ export default function StoryExactPage() {
             </section>
 
             {/* Cross-sell Section */}
-            <section className="py-24 relative overflow-hidden bg-gradient-to-b from-[#f5f0eb] to-[#ebe4dc]">
+            <section className="py-24 relative overflow-hidden bg-[linear-gradient(180deg,var(--page-gradient-mid)_0%,var(--page-gradient-end)_100%)]">
                 <div className="container mx-auto px-6 relative z-10">
                     <div className="flex flex-col items-center mb-14 text-center">
-                        <h2 className="text-3xl lg:text-4xl font-serif text-charcoal-900 mb-3 drop-shadow-sm">Más Historias para Descubrir</h2>
-                        <p className="text-charcoal-500 font-medium tracking-[0.15em] uppercase text-xs">Aventuras personalizadas para cada edad</p>
+                        <h2 className="text-3xl lg:text-4xl font-serif text-[var(--text-primary)] mb-3 drop-shadow-sm">Más Historias para Descubrir</h2>
+                        <p className="text-[var(--text-muted)] font-medium tracking-[0.15em] uppercase text-xs">Aventuras personalizadas para cada edad</p>
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 max-w-6xl mx-auto">
