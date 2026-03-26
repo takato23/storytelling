@@ -7,6 +7,7 @@ import { AlchemistLoading } from "@/components/story-wizard/AlchemistLoading"
 import { FlipbookPreview } from "@/components/story-wizard/FlipbookPreview"
 import { PrintConfigurator, PrintConfig } from "@/components/features/print/PrintConfigurator"
 import { STORIES } from "@/lib/stories"
+import { findStoryMockByIdOrSlug, siteContent } from "@/lib/site-content"
 import { ReadingLevel } from "@/components/features/education/ReadingLevelSelector"
 import { useRouter } from "next/navigation"
 import { captureEvent } from "@/lib/analytics/events"
@@ -96,6 +97,7 @@ export function PreviewStep({
     previewError,
 }: PreviewStepProps) {
     const story = STORIES.find((s) => s.id === data.selectedStory)
+    const storyMock = findStoryMockByIdOrSlug(data.selectedStory)
     const style = PIXAR_STYLE
     const previewUrl = generatedPreview?.imageUrl ?? null
     const familyCount = data.familyMembers?.length || 0
@@ -143,7 +145,7 @@ export function PreviewStep({
     const deliveryCopy = format === "print"
         ? `Digital inmediato + impreso ${quotePreview?.shippingEtaDays ? `${quotePreview.shippingEtaDays} días` : "5-10 días"}`
         : "Entrega digital inmediata"
-    const checkoutLabel = format === "print" ? "Pagar Impresión" : "Pagar Descarga online"
+    const checkoutLabel = format === "print" ? siteContent.preview.checkoutCtaPrint : siteContent.preview.checkoutCtaDigital
     const checkoutCtaAmount = formatCurrency(total, currency)
     const formatDetailLabel = format === "print" && story
         ? `${story.printSpecs.format} · ${story.printSpecs.size}`
@@ -312,12 +314,12 @@ export function PreviewStep({
     return (
         <div className="mx-auto max-w-[1380px] space-y-5">
             <motion.div className="text-center" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                <p className="mb-3 text-[11px] font-extrabold uppercase tracking-[0.22em] text-[var(--play-primary)]">Paso final</p>
+                <p className="mb-3 text-[11px] font-extrabold uppercase tracking-[0.22em] text-[var(--play-primary)]">{siteContent.preview.eyebrow}</p>
                 <h2 className="play-title text-3xl md:text-4xl">
-                    Resumen de tu <span className="text-[var(--play-primary)] italic">obra maestra</span>
+                    {siteContent.preview.title}
                 </h2>
                 <p className="play-copy mx-auto mt-2 max-w-2xl">
-                    Revisa preview, formato y total antes de llevar la magia al checkout.
+                    {siteContent.preview.copy}
                 </p>
             </motion.div>
 
@@ -329,7 +331,7 @@ export function PreviewStep({
                         className="play-panel overflow-hidden p-4 md:p-5"
                     >
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 px-1">
-                            <p className="text-sm font-semibold text-[var(--play-text-main)]">Vista previa del cuento</p>
+                            <p className="text-sm font-semibold text-[var(--play-text-main)]">{siteContent.preview.previewTitle}</p>
                             <div className="play-pill px-3 py-1.5 text-[11px]">
                                 {story?.title || "Tu cuento"}
                             </div>
@@ -347,6 +349,9 @@ export function PreviewStep({
                                 </div>
                             </div>
                         )}
+                        <p className="mt-4 rounded-2xl border border-[var(--nido-line)] bg-white/75 px-4 py-3 text-sm leading-6 text-[var(--play-text-muted)]">
+                            {storyMock?.previewPromise ?? siteContent.preview.sampleNote}
+                        </p>
                     </motion.div>
 
                     <div className="grid gap-3 md:grid-cols-3">
@@ -469,9 +474,9 @@ export function PreviewStep({
                                     <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--play-primary-container)]/20 text-[var(--play-primary)]">
                                         <Sparkles className="h-10 w-10" />
                                     </div>
-                                    <h3 className="mb-2 text-2xl font-black text-[var(--play-text-main)]">Versión digital mágica</h3>
+                                    <h3 className="mb-2 text-2xl font-black text-[var(--play-text-main)]">{siteContent.preview.digitalCardTitle}</h3>
                                     <p className="mb-6 text-[var(--play-text-muted)]">
-                                        PDF en alta resolución y lectura web interactiva para tablet y móvil.
+                                        {siteContent.preview.digitalCardCopy}
                                     </p>
                                     <div className="text-4xl font-black tracking-tight text-[var(--play-text-main)]">
                                         {checkoutCtaAmount}

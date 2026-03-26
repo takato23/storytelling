@@ -3,10 +3,9 @@ import { Caveat, Nunito, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { LanguageProvider } from "@/components/features/language/LanguageContext";
-import { CartProvider } from "@/lib/contexts/CartContext";
-import { CartDrawer } from "@/components/commerce/CartDrawer";
 import { SoundProvider } from "@/lib/contexts/SoundContext";
 import { WishlistProvider } from "@/lib/contexts/WishlistContext";
+import { siteContent } from "@/lib/site-content";
 import { ThemeProvider } from "@/lib/contexts/ThemeContext";
 import { getPublicSiteOriginForMetadata } from "@/lib/config";
 
@@ -29,7 +28,7 @@ const caveat = Caveat({
 });
 
 const siteOrigin = getPublicSiteOriginForMetadata() ?? "http://localhost:3005";
-const siteTitle = "cuento.nido | Cuentos personalizados infantiles";
+const siteTitle = `${siteContent.brand.name} | Cuentos personalizados infantiles`;
 const siteDescription =
   "Cuentos personalizados infantiles para regalar, leer y guardar. Subí una foto y convertí a tu hijo en el protagonista de su propia historia.";
 
@@ -46,14 +45,14 @@ export const metadata: Metadata = {
     description: "Cuentos personalizados infantiles para leer, regalar y guardar.",
     type: "website",
     url: siteOrigin ? new URL("/", siteOrigin).toString() : undefined,
-    siteName: "cuento.nido",
+    siteName: siteContent.brand.name,
     locale: "es_AR",
     images: [
       {
         url: "/stories/space-1.jpg",
         width: 1200,
         height: 630,
-        alt: "cuento.nido cuentos personalizados",
+        alt: `${siteContent.brand.name} cuentos personalizados`,
       },
     ],
   },
@@ -79,13 +78,10 @@ export default function RootLayout({
         <ThemeProvider>
           <LanguageProvider>
             <SoundProvider>
-              <CartProvider>
-                <WishlistProvider>
-                  <Navbar />
-                  <CartDrawer />
-                  <div className="flex-1 w-full">{children}</div>
-                </WishlistProvider>
-              </CartProvider>
+              <WishlistProvider>
+                <Navbar />
+                <div className="flex-1 w-full">{children}</div>
+              </WishlistProvider>
             </SoundProvider>
           </LanguageProvider>
         </ThemeProvider>

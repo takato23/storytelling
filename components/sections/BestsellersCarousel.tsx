@@ -80,7 +80,7 @@ export function BestsellersCarousel() {
                                     ${story.price}
                                 </div>
 
-                                <Link href={`/cuentos/${story.slug}`} className="w-full">
+                                <Link href={`/crear?story=${story.slug}`} className="w-full">
                                     <Button className="w-full rounded-2xl bg-charcoal-900 py-6 text-sm font-bold text-white shadow-md shadow-purple-200 transition-all active:scale-95 group/btn hover:bg-purple-700 hover:shadow-lg">
                                         Personalizar
                                         <ArrowRight className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform" />

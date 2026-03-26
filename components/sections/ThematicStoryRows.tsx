@@ -131,7 +131,7 @@ export function ThematicStoryRows({ className = "" }: { className?: string }) {
                                                 <h4 className="text-xl font-serif text-charcoal-900 mb-2 leading-tight group-hover:text-purple-700 transition-colors">{story.title}</h4>
 
                                                 <div className="flex items-center justify-between mt-auto pt-6">
-                                                    <Link href={`/cuentos/${story.slug}`} className="bg-purple-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 group-hover:bg-purple-700 transition-all shadow-md hover:shadow-lg">
+                                                    <Link href={`/crear?story=${story.slug}`} className="bg-purple-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 group-hover:bg-purple-700 transition-all shadow-md hover:shadow-lg">
                                                         Personalizar
                                                         <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                                                     </Link>

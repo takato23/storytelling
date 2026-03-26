@@ -7,114 +7,40 @@ import { getRequestId, logEvent, setRequestIdHeader } from "@/lib/observability"
 import { insertOrderEvent } from "@/lib/orders";
 import {
   createMercadoPagoPreference,
-  getCheckoutProvider,
+  createMercadoPagoPreferenceGeneric,
 } from "@/lib/mercadopago";
-import { toMinorUnits } from "@/lib/pricing";
-import { getStripeClient } from "@/lib/stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 import { CreateCheckoutSessionRequestSchema } from "@/lib/types";
 
 export const runtime = "nodejs";
 
-async function createStripeCheckoutForCart(
+async function createMercadoPagoCheckoutForCart(
   user: { id: string; email?: string | null },
   baseUrl: string,
   quote: ReturnType<typeof createOrderQuote>,
 ) {
-  const stripe = getStripeClient();
-  const stripeSession = await stripe.checkout.sessions.create({
-    mode: "payment",
-    success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}/crear`,
-    customer_email: user.email ?? undefined,
+  const preference = await createMercadoPagoPreferenceGeneric({
+    baseUrl,
+    title: "Pedido personalizado",
+    amount: Number(quote.total.toFixed(2)),
+    currency: quote.currency === "USD" ? "USD" : "ARS",
+    externalReference: `cart-${user.id}-${Date.now()}`,
     metadata: {
       user_id: user.id,
       source: "cart",
     },
-    line_items: quote.items.map((item) => ({
-      quantity: item.quantity,
-      price_data: {
-        currency: quote.currency.toLowerCase(),
-        unit_amount: toMinorUnits(item.unitPrice),
-        product_data: {
-          name: item.title,
-          description: item.description || undefined,
-          images: item.image && item.image.startsWith("http") ? [item.image] : undefined,
-        },
-      },
-    })),
-  });
-
-  if (!stripeSession.url) {
-    throw new Error("Stripe checkout session did not return a URL");
-  }
-
-  return {
-    checkoutUrl: stripeSession.url,
-    sessionId: stripeSession.id,
-    provider: "stripe" as const,
-  };
-}
-
-async function createStripeCheckoutForQuote(params: {
-  baseUrl: string;
-  user: { id: string; email?: string | null };
-  quote: Record<string, unknown>;
-  orderId: string;
-  storyTitle: string | null;
-}) {
-  const stripe = getStripeClient();
-  const quoteId = String(params.quote.id);
-  const quoteTotal = Number(params.quote.total);
-  const quoteCurrency = String(params.quote.currency);
-  const quoteFormat = String(params.quote.format);
-
-  const stripeSession = await stripe.checkout.sessions.create({
-    mode: "payment",
-    success_url: `${params.baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${params.baseUrl}/crear`,
-    customer_email: params.user.email ?? undefined,
-    metadata: {
-      order_id: params.orderId,
-      quote_id: quoteId,
-      user_id: params.user.id,
+    payerEmail: user.email ?? undefined,
+    backUrls: {
+      success: `${baseUrl}/success?provider=mercadopago&source=cart`,
+      failure: `${baseUrl}/crear?checkout=failed`,
+      pending: `${baseUrl}/success?provider=mercadopago&source=cart&status=pending`,
     },
-    line_items: [
-      {
-        quantity: 1,
-        price_data: {
-          currency: quoteCurrency.toLowerCase(),
-          unit_amount: toMinorUnits(quoteTotal),
-          product_data: {
-            name: params.storyTitle
-              ? `${params.storyTitle} (${quoteFormat})`
-              : `StoryMagic (${quoteFormat})`,
-          },
-        },
-      },
-    ],
-    shipping_address_collection:
-      quoteFormat === "print"
-        ? {
-            allowed_countries: ["AR"],
-          }
-        : undefined,
-    phone_number_collection:
-      quoteFormat === "print"
-        ? {
-            enabled: true,
-          }
-        : undefined,
   });
 
-  if (!stripeSession.url) {
-    throw new Error("Stripe checkout session did not return a URL");
-  }
-
   return {
-    checkoutUrl: stripeSession.url,
-    sessionId: stripeSession.id,
-    provider: "stripe" as const,
+    checkoutUrl: preference.initPoint,
+    sessionId: preference.id,
+    provider: "mercadopago" as const,
   };
 }
 
@@ -162,7 +88,7 @@ export async function POST(request: Request) {
     const cartPayload = checkoutPayloadSchema.safeParse(rawPayload);
     if (cartPayload.success) {
       const quote = createOrderQuote(cartPayload.data.items);
-      const checkout = await createStripeCheckoutForCart(
+      const checkout = await createMercadoPagoCheckoutForCart(
         { id: user.id, email: user.email },
         baseUrl,
         quote,
@@ -212,7 +138,7 @@ export async function POST(request: Request) {
       throw new ApiError(409, "quote_expired", "Quote expired");
     }
 
-    const selectedProvider = getCheckoutProvider();
+    const selectedProvider = "mercadopago";
     let orderId = quote.order_id as string | null;
     let orderStatusBeforeCheckout: string | null = null;
 
@@ -300,22 +226,13 @@ export async function POST(request: Request) {
       .eq("id", quote.story_id)
       .maybeSingle();
 
-    const checkout =
-      selectedProvider === "mercadopago"
-        ? await createMercadoPagoCheckoutForQuote({
-            baseUrl,
-            user: { id: user.id, email: user.email },
-            quote: quote as Record<string, unknown>,
-            orderId: String(orderId),
-            storyTitle: story?.title ? String(story.title) : null,
-          })
-        : await createStripeCheckoutForQuote({
-            baseUrl,
-            user: { id: user.id, email: user.email },
-            quote: quote as Record<string, unknown>,
-            orderId: String(orderId),
-            storyTitle: story?.title ? String(story.title) : null,
-          });
+    const checkout = await createMercadoPagoCheckoutForQuote({
+      baseUrl,
+      user: { id: user.id, email: user.email },
+      quote: quote as Record<string, unknown>,
+      orderId: String(orderId),
+      storyTitle: story?.title ? String(story.title) : null,
+    });
 
     const { error: paymentError } = await adminClient.from("payments").upsert(
       {

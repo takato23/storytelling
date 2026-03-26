@@ -4,14 +4,13 @@ import React, { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
-import { LogOut, Menu, ShoppingBag, User, X } from "lucide-react"
+import { LogOut, Menu, User, X } from "lucide-react"
 import { BrandWordmark } from "@/components/layout/BrandWordmark"
-import { useCart } from "@/lib/contexts/CartContext"
+import { siteContent } from "@/lib/site-content"
 import { hasSupabaseCredentials } from "@/lib/supabase/env"
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
 
 export function Navbar() {
-    const { itemCount, toggleCart } = useCart()
     const [isScrolled, setIsScrolled] = useState(false)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [userEmail, setUserEmail] = useState<string | null>(null)
@@ -87,13 +86,7 @@ export function Navbar() {
         router.refresh()
     }
 
-    const navLinks = [
-        { name: "Inicio", href: "/" },
-        { name: "Cómo funciona", href: "/#como-funciona" },
-        { name: "Stickers", href: "/stickers" },
-        { name: "Catálogo", href: "/nuestros-libros" },
-        { name: "Mis cuentos", href: "/cuenta/pedidos" },
-    ]
+    const navLinks = siteContent.navigation.publicLinks
 
     const closeMobileMenu = () => setMobileMenuOpen(false)
 
@@ -112,7 +105,7 @@ export function Navbar() {
                             <Link href="/" className="min-w-0 flex-1 lg:flex-none" onClick={closeMobileMenu}>
                                 <BrandWordmark
                                     size="nav"
-                                    tagline="donde nacen historias"
+                                    tagline={siteContent.brand.navbarTagline}
                                     className="max-w-max"
                                 />
                             </Link>
@@ -161,20 +154,6 @@ export function Navbar() {
                                         <span>Entrar</span>
                                     </Link>
                                 )}
-
-                                <button
-                                    onClick={toggleCart}
-                                    className="nido-icon-button relative"
-                                    aria-label="Abrir carrito"
-                                >
-                                    <ShoppingBag className="h-5 w-5" />
-                                    {itemCount > 0 && (
-                                        <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--nido-sage-strong)] text-[10px] font-bold text-white">
-                                            {itemCount}
-                                        </span>
-                                    )}
-                                </button>
-
                                 <button
                                     onClick={() => setMobileMenuOpen((prev) => !prev)}
                                     className="nido-icon-button lg:hidden"
@@ -198,7 +177,7 @@ export function Navbar() {
                         className="nido-mobile-overlay fixed inset-0 z-40 px-4 pb-6 pt-24 backdrop-blur-md lg:hidden"
                     >
                         <div className="nido-mobile-panel mx-auto flex h-full max-w-xl flex-col gap-5 overflow-y-auto p-6">
-                            <BrandWordmark size="footer" tagline="historias hechas para regalar" />
+                            <BrandWordmark size="footer" tagline={siteContent.brand.mobileTagline} />
 
                             <Link
                                 href="/crear"

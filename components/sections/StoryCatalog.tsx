@@ -126,7 +126,7 @@ export function StoryCatalog({
                                     transition={{ duration: 0.3 }}
                                     className="h-full"
                                 >
-                                    <Link href={`/cuentos/${story.slug}`} className="group h-full block">
+                                    <Link href={`/crear?story=${story.slug}`} className="group h-full block">
                                         <motion.div
                                             className="group relative flex h-full flex-col overflow-hidden rounded-[32px] bg-[var(--play-surface-high)] p-4 shadow-[0_18px_42px_-30px_rgba(0,93,167,0.3)] transition-all duration-500 hover:-translate-y-1"
                                             initial={{ opacity: 0, y: 20 }}

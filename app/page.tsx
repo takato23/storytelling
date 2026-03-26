@@ -10,55 +10,37 @@ import { BrandWordmark } from "@/components/layout/BrandWordmark"
 import { Footer } from "@/components/layout/Footer"
 import { ImageComparisonSlider } from "@/components/ui/ImageComparisonSlider"
 import { captureEvent } from "@/lib/analytics/events"
-import { STORIES } from "@/lib/stories"
+import { getStoryMocksByIds, siteContent } from "@/lib/site-content"
 
-const featuredStories = STORIES.slice(0, 3)
-const libraryStories = STORIES.slice(1, 5)
-const heroHighlights = [
-  {
-    value: "Preview guiada",
-    detail: "Ves el resultado antes de pagar.",
-  },
-  {
-    value: "Digital o impreso",
-    detail: "Elegís el formato que mejor te sirva.",
-  },
-  {
-    value: "Hecho con su foto",
-    detail: "Nombre, cara y cuento en una sola experiencia.",
-  },
-]
-const benefits = [
-  "Con preview antes de pagar",
-  "Disponible en digital o impreso",
-  "Historias para distintas edades",
-  "Personalizado con su foto y su nombre",
-]
+const featuredStories = getStoryMocksByIds(siteContent.home.featuredStoryIds)
+const libraryStories = getStoryMocksByIds(siteContent.home.libraryStoryIds)
+const heroHighlights = siteContent.home.hero.highlights
+const benefits = siteContent.home.finalCta.benefits
 
 const steps = [
   {
-    title: "Subí tu foto",
-    description: "Con una foto clara ya podemos empezar a crear su personaje dentro del cuento.",
+    title: siteContent.home.process.steps[0].title,
+    description: siteContent.home.process.steps[0].description,
     icon: Camera,
-    tone: "sky",
+    tone: siteContent.home.process.steps[0].tone,
   },
   {
-    title: "Elegí la aventura",
-    description: "Elegí la historia que más le guste, según su edad, su personalidad y lo que lo entusiasma.",
+    title: siteContent.home.process.steps[1].title,
+    description: siteContent.home.process.steps[1].description,
     icon: BookOpen,
-    tone: "rose",
+    tone: siteContent.home.process.steps[1].tone,
   },
   {
-    title: "Te mostramos la preview",
-    description: "La revisás antes de pagar para asegurarte de que todo se vea como esperás.",
+    title: siteContent.home.process.steps[2].title,
+    description: siteContent.home.process.steps[2].description,
     icon: Wand2,
-    tone: "sage",
+    tone: siteContent.home.process.steps[2].tone,
   },
   {
-    title: "Recibilo como prefieras",
-    description: "Elegí versión digital, impresa o ambas, según cómo quieras regalarlo o guardarlo.",
+    title: siteContent.home.process.steps[3].title,
+    description: siteContent.home.process.steps[3].description,
     icon: Gift,
-    tone: "peach",
+    tone: siteContent.home.process.steps[3].tone,
   },
 ]
 
@@ -112,29 +94,28 @@ export default function Home() {
               transition={{ duration: 0.55 }}
               className="max-w-2xl"
             >
-              <BrandWordmark size="hero" tagline="donde nacen historias" />
+              <BrandWordmark size="hero" tagline={siteContent.brand.tagline} />
 
               <div className="mt-8 max-w-xl">
                 <span className="nido-kicker">
                   <Sparkles className="h-4 w-4" />
-                  Cuentos personalizados
+                  {siteContent.home.hero.kicker}
                 </span>
                 <h1 className="nido-hero-title mt-5">
-                  Un cuento donde tu hijo es el protagonista.
+                  {siteContent.home.hero.title}
                 </h1>
                 <p className="nido-hero-copy mt-4">
-                  Personalizalo con su nombre, su apariencia y una historia mágica que se sienta
-                  propia desde la primera página.
+                  {siteContent.home.hero.copy}
                 </p>
               </div>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link href="/crear" className="nido-button-primary inline-flex items-center justify-center gap-2 px-6 py-4 text-base">
-                  Subir su foto
+                  {siteContent.home.hero.primaryCtaLabel}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link href="/nuestros-libros" className="nido-button-secondary inline-flex items-center justify-center gap-2 px-6 py-4 text-base">
-                  Ver catálogo
+                  {siteContent.home.hero.secondaryCtaLabel}
                 </Link>
               </div>
 
@@ -158,33 +139,33 @@ export default function Home() {
                 <ImageComparisonSlider
                   beforeImage="/images/generated/kid_photo.png"
                   afterImage="/images/generated/kid_pixar_correlate.png"
-                  beforeLabel="Antes"
-                  afterLabel="Después"
-                  instructionText="Deslizá para ver antes y después"
+                  beforeLabel={siteContent.home.hero.beforeLabel}
+                  afterLabel={siteContent.home.hero.afterLabel}
+                  instructionText={siteContent.home.hero.comparisonInstruction}
                   className="aspect-[4/5] sm:aspect-[5/4] lg:aspect-[4/3]"
                 />
               </div>
 
               <div className="nido-note-card absolute -bottom-6 left-0 hidden max-w-[220px] -rotate-2 p-4 md:block md:left-[-3%]">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--nido-sage-strong)]">
-                  Cómo empieza
+                  {siteContent.home.hero.notes.processTitle}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-[var(--nido-muted)]">
-                  Subís una foto, elegís el cuento y te mostramos una preview antes de pagar.
+                  {siteContent.home.hero.notes.processCopy}
                 </p>
               </div>
 
               <div className="nido-note-card absolute right-0 top-8 hidden max-w-[220px] rotate-[3deg] p-4 md:block md:right-[-3%]">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-[var(--nido-peach)]">
-                  Para guardar
+                  {siteContent.home.hero.notes.keepTitle}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-[var(--nido-muted)]">
-                  Un recuerdo para leer juntos hoy y conservar por mucho tiempo.
+                  {siteContent.home.hero.notes.keepCopy}
                 </p>
               </div>
 
               <p className="mt-4 px-2 text-sm leading-6 text-[var(--nido-muted)] md:hidden">
-                Deslizá y mirá cómo su foto se transforma en una ilustración del cuento.
+                {siteContent.home.hero.mobileHelper}
               </p>
             </motion.div>
           </div>
@@ -193,9 +174,9 @@ export default function Home() {
         <section className="mb-16 md:mb-20">
           <div className="nido-section-shelf">
             <SectionHeader
-              eyebrow="Historias destacadas"
-              title="Elegí una historia que le va a encantar."
-              copy="Estas son algunas de las aventuras favoritas de familias que buscan un regalo original, emotivo y personalizado."
+              eyebrow={siteContent.home.featured.eyebrow}
+              title={siteContent.home.featured.title}
+              copy={siteContent.home.featured.copy}
               href="/nuestros-libros"
             />
 
@@ -272,16 +253,15 @@ export default function Home() {
               />
             </div>
             <div className="mt-6">
-              <span className="nido-kicker">Un regalo especial</span>
+              <span className="nido-kicker">{siteContent.home.library.featureEyebrow}</span>
               <h2 className="nido-section-title mt-4 text-3xl md:text-4xl">
-                Un libro pensado para emocionar de verdad.
+                {siteContent.home.library.featureTitle}
               </h2>
               <p className="nido-section-copy mt-3">
-                Cada cuento está hecho para que se reconozca en la historia y sienta que ese libro fue
-                creado especialmente para él o para ella.
+                {siteContent.home.library.featureCopy}
               </p>
               <Link href="/crear" className="nido-inline-link mt-5 inline-flex items-center gap-2 text-sm font-semibold">
-                Empezar ahora
+                {siteContent.home.library.featureActionLabel}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -289,9 +269,9 @@ export default function Home() {
 
           <div>
             <SectionHeader
-              eyebrow="Más opciones"
-              title="Hay una aventura para cada chico."
-              copy="Desde historias tiernas hasta aventuras llenas de acción, podés elegir la que mejor combine con su edad y su personalidad."
+              eyebrow={siteContent.home.library.eyebrow}
+              title={siteContent.home.library.title}
+              copy={siteContent.home.library.copy}
             />
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -337,9 +317,9 @@ export default function Home() {
         <section id="como-funciona" className="mb-16 scroll-mt-28 md:mb-20">
           <div className="nido-process-shell">
             <SectionHeader
-              eyebrow="Así funciona"
-              title="Crear su cuento lleva solo unos minutos."
-              copy="Subís la foto, elegís la historia y revisás la preview antes de confirmar la compra."
+              eyebrow={siteContent.home.process.eyebrow}
+              title={siteContent.home.process.title}
+              copy={siteContent.home.process.copy}
             />
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -379,13 +359,13 @@ export default function Home() {
             <div className="max-w-2xl">
               <span className="nido-kicker">
                 <Sparkles className="h-4 w-4" />
-                Listo para regalar
+                {siteContent.home.finalCta.eyebrow}
               </span>
               <h2 className="nido-section-title mt-5 text-4xl md:text-5xl">
-                Un regalo personalizado que queda para siempre.
+                {siteContent.home.finalCta.title}
               </h2>
               <p className="nido-section-copy mt-4">
-                Lo personalizás en minutos y elegís si querés recibirlo en digital, impreso o en ambos formatos.
+                {siteContent.home.finalCta.copy}
               </p>
 
               <div className="mt-7 grid gap-3 sm:grid-cols-2">
@@ -399,11 +379,11 @@ export default function Home() {
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link href="/crear" className="nido-button-primary inline-flex items-center justify-center gap-2 px-6 py-4 text-base">
-                  Crear mi cuento
+                  {siteContent.home.finalCta.primaryCtaLabel}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link href="/nuestros-libros" className="nido-button-secondary inline-flex items-center justify-center gap-2 px-6 py-4 text-base">
-                  Explorar historias
+                  {siteContent.home.finalCta.secondaryCtaLabel}
                 </Link>
               </div>
             </div>

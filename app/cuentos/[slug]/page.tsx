@@ -16,7 +16,8 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { STORIES, type Story } from "@/lib/stories"
+import { STORIES, findStoryByIdOrSlug, type Story } from "@/lib/stories"
+import { findStoryMockByIdOrSlug, siteContent } from "@/lib/site-content"
 
 // Dynamic imports
 const Book3D = dynamic(() => import("@/components/3d/Book3D"), { ssr: false })
@@ -27,7 +28,8 @@ export default function StoryExactPage() {
     const router = useRouter()
 
     // Find story data
-    const story = STORIES.find(s => s.slug === params.slug)
+    const story = findStoryByIdOrSlug(String(params.slug))
+    const storyMock = findStoryMockByIdOrSlug(String(params.slug))
 
     // Handle 404 or loading
     if (!story) {
@@ -149,13 +151,18 @@ export default function StoryExactPage() {
                                     <div className="w-8 h-8 rounded-full bg-white border border-indigo-950/5 flex items-center justify-center mr-3 shadow-sm group-hover/back:-translate-x-1 transition-transform">
                                         <ArrowRight className="w-4 h-4 rotate-180" />
                                     </div>
-                                    Regresar al Catálogo
+                                    {siteContent.storyDetail.backLabel}
                                 </Link>
 
                                 <div className="flex flex-wrap items-center gap-3 mb-6">
                                     <span className="px-4 py-1.5 bg-indigo-950 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg">
                                         {story.ages}
                                     </span>
+                                    {storyMock ? (
+                                        <span className="px-4 py-1.5 bg-white/80 backdrop-blur-md text-indigo-950 border border-indigo-950/5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-sm">
+                                            {siteContent.storyDetail.mockBadge}
+                                        </span>
+                                    ) : null}
                                     <span className="px-4 py-1.5 bg-white/80 backdrop-blur-md text-indigo-950 border border-indigo-950/5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 shadow-sm">
                                         <Clock className="w-3.5 h-3.5 text-coral-500" />
                                         20 MIN
@@ -172,18 +179,25 @@ export default function StoryExactPage() {
 
                                 <div className="mb-8 rounded-3xl border border-indigo-100 bg-indigo-50/65 p-5 space-y-3">
                                     <div className="flex items-center justify-between text-sm font-semibold text-indigo-700">
-                                        <span>Descarga online</span>
+                                        <span>{siteContent.storyDetail.digitalLabel}</span>
                                         <span className="text-base font-black">
                                             {new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(story.digitalPriceArs)}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between text-sm font-semibold text-charcoal-700">
-                                        <span>Cuento impreso</span>
+                                        <span>{siteContent.storyDetail.printLabel}</span>
                                         <span className="text-base font-black">
                                             {new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(story.printPriceArs)}
                                         </span>
                                     </div>
                                 </div>
+
+                                {storyMock ? (
+                                    <div className="mb-8 rounded-3xl border border-white/70 bg-white/65 px-5 py-4 text-sm leading-7 text-charcoal-700 shadow-sm backdrop-blur-md">
+                                        <span className="font-semibold text-indigo-950">{storyMock.mockLabel}.</span>{" "}
+                                        {siteContent.storyDetail.mockNote}
+                                    </div>
+                                ) : null}
 
                                 {/* Action Center */}
                                 <div className="flex gap-3 flex-col sm:flex-row items-center p-2 bg-white/30 backdrop-blur-md rounded-[28px] border border-white/50 shadow-inner">
@@ -192,7 +206,7 @@ export default function StoryExactPage() {
                                         className="w-full sm:flex-1 bg-indigo-950 hover:bg-black text-white rounded-[20px] py-8 font-bold text-lg shadow-2xl shadow-indigo-900/30 hover:shadow-black/30 transition-all hover:scale-[1.02] active:scale-95 group/cta"
                                         onClick={() => router.push(`/crear?story=${story.slug}`)}
                                     >
-                                        Comenzar Personalización
+                                        {siteContent.storyDetail.ctaLabel}
                                         <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center ml-3 group-hover/cta:translate-x-1 transition-transform">
                                             <ArrowRight className="w-4 h-4" />
                                         </div>
@@ -219,8 +233,8 @@ export default function StoryExactPage() {
             <section className="py-24 relative overflow-hidden bg-[linear-gradient(180deg,var(--page-gradient-mid)_0%,var(--page-gradient-end)_100%)]">
                 <div className="container mx-auto px-6 relative z-10">
                     <div className="flex flex-col items-center mb-14 text-center">
-                        <h2 className="text-3xl lg:text-4xl font-serif text-[var(--text-primary)] mb-3 drop-shadow-sm">Más Historias para Descubrir</h2>
-                        <p className="text-[var(--text-muted)] font-medium tracking-[0.15em] uppercase text-xs">Aventuras personalizadas para cada edad</p>
+                        <h2 className="text-3xl lg:text-4xl font-serif text-[var(--text-primary)] mb-3 drop-shadow-sm">{siteContent.storyDetail.crossSellTitle}</h2>
+                        <p className="text-[var(--text-muted)] font-medium tracking-[0.15em] uppercase text-xs">{siteContent.storyDetail.crossSellCopy}</p>
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 max-w-6xl mx-auto">
