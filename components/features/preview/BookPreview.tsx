@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { ChevronLeft, ChevronRight, X, BookOpen, ShoppingCart, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { BookCover } from "@/components/books/BookCover"
 
 interface BookPage {
     image: string
@@ -120,11 +121,19 @@ export function BookPreview({
                                 >
                                     {/* Page content */}
                                     <div className="absolute inset-0 bg-white">
-                                        <img
-                                            src={allPages[currentPage].image}
-                                            alt={`Página ${currentPage}`}
-                                            className="w-full h-full object-cover"
-                                        />
+                                        {currentPage === 0 ? (
+                                            <BookCover
+                                                imageSrc={allPages[currentPage].image}
+                                                title={bookTitle}
+                                                alt={bookTitle}
+                                            />
+                                        ) : (
+                                            <img
+                                                src={allPages[currentPage].image}
+                                                alt={`Página ${currentPage}`}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        )}
 
                                         {/* Text overlay if present */}
                                         {allPages[currentPage].text && (

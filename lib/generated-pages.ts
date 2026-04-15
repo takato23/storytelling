@@ -13,19 +13,33 @@ interface GeneratedPageRow {
   error_message?: string | null;
 }
 
-interface StoredPagePayload {
+export interface StoredPagePayload {
   title?: unknown;
   text?: unknown;
+  layoutVariant?: unknown;
+  sourceSceneId?: unknown;
+  storyPageRange?: unknown;
 }
 
-export function serializePagePayload(page: StoryPage) {
+interface SerializePagePayloadInput {
+  title: string;
+  text: string;
+  layoutVariant?: StoryPage["layoutVariant"];
+  sourceSceneId?: string | null;
+  storyPageRange?: [number, number] | null;
+}
+
+export function serializePagePayload(page: StoryPage | SerializePagePayloadInput) {
   return JSON.stringify({
     title: page.title,
     text: page.text,
+    layoutVariant: page.layoutVariant ?? "standard",
+    sourceSceneId: "sourceSceneId" in page ? page.sourceSceneId ?? null : null,
+    storyPageRange: "storyPageRange" in page ? page.storyPageRange ?? null : null,
   });
 }
 
-function parsePayload(raw: string | null): StoredPagePayload | null {
+export function parseStoredPagePayload(raw: string | null): StoredPagePayload | null {
   if (!raw) return null;
 
   try {
@@ -40,16 +54,22 @@ export function rowsToStoryPages(rows: GeneratedPageRow[]): StoryPage[] {
     .slice()
     .sort((a, b) => a.page_number - b.page_number)
     .map((row, index) => {
-      const payload = parsePayload(row.prompt_used);
+      const payload = parseStoredPagePayload(row.prompt_used);
       const parsedTitle = typeof payload?.title === "string" ? payload.title.trim() : "";
       const parsedText = typeof payload?.text === "string" ? payload.text.trim() : "";
+      const parsedLayout =
+        typeof payload?.layoutVariant === "string" &&
+        ["standard", "image_only", "text_on_image", "cover", "back_cover"].includes(payload.layoutVariant)
+          ? (payload.layoutVariant as StoryPage["layoutVariant"])
+          : "standard";
       const fallbackText = row.prompt_used?.trim() || "";
 
       return {
-        pageNumber: index + 1,
+        pageNumber: Number(row.page_number ?? index + 1),
         title: parsedTitle || `Página ${index + 1}`,
         text: parsedText || fallbackText || "Contenido de la historia no disponible.",
         imageUrl: row.image_url ?? null,
+        layoutVariant: parsedLayout,
       };
     });
 }

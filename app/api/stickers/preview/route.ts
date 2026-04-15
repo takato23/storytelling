@@ -8,6 +8,7 @@ import {
   generateImageWithGemini,
   type StickerPreviewQualityResult,
 } from "@/lib/image-generator";
+import { createStickerSheetFallback } from "@/lib/sticker-fallback";
 import {
   buildStickerPrompt,
   DEFAULT_STICKER_STYLE_ID,
@@ -95,9 +96,28 @@ export async function POST(request: Request) {
     let generated = await generateImageWithGemini({
       prompt: basePrompt,
       referenceImageBase64: payload.imageBase64,
+      edgeTimeoutMs: 120_000,
+      maxRetries: 1,
     });
+    let usedDeterministicFallback = false;
 
     if (!generated.imageDataUrl) {
+      generated = {
+        imageDataUrl: await createStickerSheetFallback({
+          referenceImageBase64: payload.imageBase64,
+          childGender: payload.childGender,
+          themes: filteredThemes,
+          styleLabel,
+        }),
+        provider: "fallback",
+        model: "deterministic-sticker-sheet",
+        errorMessage: generated.errorMessage ?? null,
+      };
+      usedDeterministicFallback = true;
+    }
+
+    const generatedImageDataUrl = generated.imageDataUrl;
+    if (!generatedImageDataUrl) {
       return NextResponse.json(
         {
           error: "preview_unavailable",
@@ -108,22 +128,37 @@ export async function POST(request: Request) {
       );
     }
 
-    let quality = await evaluateStickerPreviewQuality({
-      previewImageBase64: generated.imageDataUrl,
-      referenceImageBase64: payload.imageBase64,
-      childGender: payload.childGender,
-      themes: filteredThemes,
-      styleLabel,
-    });
-
     let attempts = 1;
     let retryApplied = false;
+    let quality: StickerPreviewQualityResult;
 
-    if (!quality.pass) {
+    if (usedDeterministicFallback) {
+      quality = {
+        pass: true,
+        confidence: 0.35,
+        issues: [],
+        fixInstructions: "",
+        model: "deterministic-fallback",
+        available: false,
+        rawText: null,
+      };
+    } else {
+      quality = await evaluateStickerPreviewQuality({
+        previewImageBase64: generatedImageDataUrl,
+        referenceImageBase64: payload.imageBase64,
+        childGender: payload.childGender,
+        themes: filteredThemes,
+        styleLabel,
+      });
+    }
+
+    if (!usedDeterministicFallback && !quality.pass) {
       const retryPrompt = buildRetryPrompt(basePrompt, quality);
       const retried = await generateImageWithGemini({
         prompt: retryPrompt,
         referenceImageBase64: payload.imageBase64,
+        edgeTimeoutMs: 120_000,
+        maxRetries: 1,
       });
 
       if (retried.imageDataUrl) {
@@ -146,13 +181,13 @@ export async function POST(request: Request) {
           childGender: payload.childGender,
           themes: filteredThemes,
           styleId,
-          previewImageUrl: generated.imageDataUrl as string,
+          previewImageUrl: generatedImageDataUrl,
         })
       : null;
 
     return NextResponse.json({
       success: true,
-      imageUrl: generated.imageDataUrl,
+      imageUrl: generatedImageDataUrl,
       previewToken,
       approvedForCheckout,
       childGender: payload.childGender,

@@ -2,13 +2,17 @@ import { NextResponse } from "next/server";
 import { handleRouteError } from "@/lib/api";
 import { getBaseUrl } from "@/lib/config";
 import { ApiError, requireAuthenticatedUser } from "@/lib/auth";
+import { getCheckoutAvailability } from "@/lib/checkout-status";
 import { checkoutPayloadSchema, createOrderQuote } from "@/lib/checkout";
 import { getRequestId, logEvent, setRequestIdHeader } from "@/lib/observability";
 import { insertOrderEvent } from "@/lib/orders";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import {
   createMercadoPagoPreference,
   createMercadoPagoPreferenceGeneric,
+  getCheckoutProvider,
 } from "@/lib/mercadopago";
+import { getStripeClient } from "@/lib/stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 import { CreateCheckoutSessionRequestSchema } from "@/lib/types";
 
@@ -44,6 +48,47 @@ async function createMercadoPagoCheckoutForCart(
   };
 }
 
+async function createStripeCheckoutForCart(
+  user: { id: string; email?: string | null },
+  baseUrl: string,
+  quote: ReturnType<typeof createOrderQuote>,
+) {
+  const stripe = getStripeClient();
+  const stripeCurrency = quote.currency === "USD" ? "usd" : "ars";
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    success_url: `${baseUrl}/success?provider=stripe&source=cart`,
+    cancel_url: `${baseUrl}/crear?checkout=failed`,
+    customer_email: user.email ?? undefined,
+    metadata: {
+      source: "cart",
+      user_id: user.id,
+    },
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency: stripeCurrency,
+          unit_amount: Math.round(Number(quote.total.toFixed(2)) * 100),
+          product_data: {
+            name: "Pedido personalizado",
+          },
+        },
+      },
+    ],
+  });
+
+  if (!session.url) {
+    throw new Error("Stripe checkout session did not return a URL");
+  }
+
+  return {
+    checkoutUrl: session.url,
+    sessionId: session.id,
+    provider: "stripe" as const,
+  };
+}
+
 async function createMercadoPagoCheckoutForQuote(params: {
   baseUrl: string;
   user: { id: string; email?: string | null };
@@ -76,23 +121,94 @@ async function createMercadoPagoCheckoutForQuote(params: {
   };
 }
 
+async function createStripeCheckoutForQuote(params: {
+  baseUrl: string;
+  user: { id: string; email?: string | null };
+  quote: Record<string, unknown>;
+  orderId: string;
+  storyTitle: string | null;
+}) {
+  const stripe = getStripeClient();
+  const quoteId = String(params.quote.id);
+  const quoteTotal = Number(params.quote.total);
+  const quoteCurrency = String(params.quote.currency) === "USD" ? "usd" : "ars";
+  const quoteFormat = String(params.quote.format);
+  const isPrint = quoteFormat === "print";
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    success_url: `${params.baseUrl}/success?provider=stripe&source=order_quote`,
+    cancel_url: `${params.baseUrl}/crear?checkout=failed`,
+    customer_email: params.user.email ?? undefined,
+    metadata: {
+      source: "order_quote",
+      order_id: params.orderId,
+      quote_id: quoteId,
+      user_id: params.user.id,
+    },
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency: quoteCurrency,
+          unit_amount: Math.round(Number(quoteTotal.toFixed(2)) * 100),
+          product_data: {
+            name: params.storyTitle
+              ? `${params.storyTitle} (${quoteFormat})`
+              : `StoryMagic (${quoteFormat})`,
+          },
+        },
+      },
+    ],
+    shipping_address_collection: isPrint ? { allowed_countries: ["AR"] } : undefined,
+    phone_number_collection: isPrint ? { enabled: true } : undefined,
+  });
+
+  if (!session.url) {
+    throw new Error("Stripe checkout session did not return a URL");
+  }
+
+  return {
+    checkoutUrl: session.url,
+    sessionId: session.id,
+    provider: "stripe" as const,
+  };
+}
+
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
   const route = "/api/checkout/session";
   try {
+    const limited = enforceRateLimit(request, { key: route, limit: 5, windowMs: 60_000 });
+    if (limited) return setRequestIdHeader(limited, requestId);
+
     const { user } = await requireAuthenticatedUser();
     logEvent("info", "checkout_session.request", { request_id: requestId, route, user_id: user.id });
     const rawPayload = await request.json();
     const baseUrl = getBaseUrl(request);
+    const selectedProvider = getCheckoutProvider();
+    const checkoutAvailability = getCheckoutAvailability();
+
+    if (!checkoutAvailability.enabled) {
+      const response = NextResponse.json(
+        {
+          error: "checkout_unavailable",
+          message: checkoutAvailability.message,
+          provider: checkoutAvailability.provider,
+          reason: checkoutAvailability.reason,
+        },
+        { status: 503 },
+      );
+      return setRequestIdHeader(response, requestId);
+    }
 
     const cartPayload = checkoutPayloadSchema.safeParse(rawPayload);
     if (cartPayload.success) {
       const quote = createOrderQuote(cartPayload.data.items);
-      const checkout = await createMercadoPagoCheckoutForCart(
-        { id: user.id, email: user.email },
-        baseUrl,
-        quote,
-      );
+      const checkout =
+        selectedProvider === "stripe"
+          ? await createStripeCheckoutForCart({ id: user.id, email: user.email }, baseUrl, quote)
+          : await createMercadoPagoCheckoutForCart({ id: user.id, email: user.email }, baseUrl, quote);
 
       const response = NextResponse.json({
         checkout_url: checkout.checkoutUrl,
@@ -138,7 +254,6 @@ export async function POST(request: Request) {
       throw new ApiError(409, "quote_expired", "Quote expired");
     }
 
-    const selectedProvider = "mercadopago";
     let orderId = quote.order_id as string | null;
     let orderStatusBeforeCheckout: string | null = null;
 
@@ -186,13 +301,29 @@ export async function POST(request: Request) {
         throw new Error(itemError.message);
       }
 
-      const { error: linkError } = await adminClient
+      const { data: linkResult, error: linkError } = await adminClient
         .from("order_quotes")
         .update({ order_id: orderId })
-        .eq("id", quote.id);
+        .eq("id", quote.id)
+        .is("order_id", null)
+        .select("order_id")
+        .maybeSingle();
 
       if (linkError) {
         throw new Error(linkError.message);
+      }
+
+      if (!linkResult) {
+        // Race condition: another request already linked this quote to an order.
+        // Clean up our duplicate order and use the existing one.
+        await adminClient.from("orders").delete().eq("id", orderId);
+        const { data: refreshedQuote } = await adminClient
+          .from("order_quotes")
+          .select("order_id")
+          .eq("id", quote.id)
+          .single();
+        orderId = String(refreshedQuote!.order_id);
+        orderStatusBeforeCheckout = "pending_payment";
       }
 
       await insertOrderEvent(adminClient, {
@@ -226,13 +357,22 @@ export async function POST(request: Request) {
       .eq("id", quote.story_id)
       .maybeSingle();
 
-    const checkout = await createMercadoPagoCheckoutForQuote({
-      baseUrl,
-      user: { id: user.id, email: user.email },
-      quote: quote as Record<string, unknown>,
-      orderId: String(orderId),
-      storyTitle: story?.title ? String(story.title) : null,
-    });
+    const checkout =
+      selectedProvider === "stripe"
+        ? await createStripeCheckoutForQuote({
+            baseUrl,
+            user: { id: user.id, email: user.email },
+            quote: quote as Record<string, unknown>,
+            orderId: String(orderId),
+            storyTitle: story?.title ? String(story.title) : null,
+          })
+        : await createMercadoPagoCheckoutForQuote({
+            baseUrl,
+            user: { id: user.id, email: user.email },
+            quote: quote as Record<string, unknown>,
+            orderId: String(orderId),
+            storyTitle: story?.title ? String(story.title) : null,
+          });
 
     const { error: paymentError } = await adminClient.from("payments").upsert(
       {

@@ -58,7 +58,7 @@ export function CharacterStep({
                 <div>
                     <label className="block text-sm font-semibold text-charcoal-700 mb-4 ml-1 flex justify-between items-center">
                         Edad del niño/a
-                        <span className="wizard-liquid-pill text-indigo-700 font-extrabold px-3 py-1 rounded-full text-sm">{childAge} años</span>
+                        <span className="wizard-liquid-pill text-[var(--play-primary-strong)] font-extrabold px-3 py-1 rounded-full text-sm">{childAge} años</span>
                     </label>
                     <input
                         type="range"
@@ -66,7 +66,7 @@ export function CharacterStep({
                         max="12"
                         value={childAge}
                         onChange={(e) => onUpdate("childAge", parseInt(e.target.value))}
-                        className="w-full h-2.5 bg-charcoal-100/80 rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:accent-indigo-400"
+                        className="w-full h-2.5 bg-charcoal-100/80 rounded-lg appearance-none cursor-pointer accent-[var(--play-primary)] hover:accent-[var(--play-primary-container)]"
                     />
                     <div className="flex justify-between text-xs font-bold text-charcoal-400 mt-2 px-1">
                         <span>3 años</span>
@@ -89,7 +89,7 @@ export function CharacterStep({
                                 key={option.value}
                                 onClick={() => onUpdate("childGender", option.value)}
                                 className={`group relative p-4 rounded-2xl transition-all duration-300 overflow-hidden border ${childGender === option.value
-                                    ? "bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-[0_16px_28px_-14px_rgba(79,70,229,0.8)] scale-[1.03] border-indigo-200/60"
+                                    ? "bg-gradient-to-br from-[var(--play-primary)] to-[var(--play-primary-strong)] text-white shadow-[var(--play-shadow-button)] scale-[1.03] border-[var(--play-primary-container)]/60"
                                     : "wizard-liquid-soft text-charcoal-700 border-white/70 hover:bg-white/80 hover:shadow-lg hover:-translate-y-0.5"
                                     }`}
                                 whileTap={{ scale: 0.95 }}

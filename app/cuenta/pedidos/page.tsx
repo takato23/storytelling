@@ -75,22 +75,33 @@ const STATUS_LABELS: Record<string, string> = {
   failed: "Fallido",
 }
 
+/*
+ * Status badge colors — intentionally semantic Tailwind colors (not brand)
+ * since they represent system states that need immediate visual distinction.
+ * Grouped by lifecycle phase for easier maintenance.
+ */
 const STATUS_COLORS: Record<string, string> = {
-  draft: "bg-charcoal-100 text-charcoal-600",
+  // Draft / Inactive
+  draft: "bg-slate-100 text-slate-600",
+  cancelled: "bg-slate-100 text-slate-600",
+  // Payment
   pending_payment: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
   paid: "bg-sky-50 text-sky-700 ring-1 ring-sky-200",
-  generating: "bg-purple-50 text-purple-700 ring-1 ring-purple-200",
-  qa_pending: "bg-orange-50 text-orange-700 ring-1 ring-orange-200",
-  ready_print_assets: "bg-violet-50 text-violet-700 ring-1 ring-violet-200",
+  refunded: "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
+  // Generation
+  generating: "bg-violet-50 text-violet-700 ring-1 ring-violet-200",
+  qa_pending: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
   qa_failed: "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
+  // Ready
   ready_digital: "bg-teal-50 text-teal-700 ring-1 ring-teal-200",
+  ready_print_assets: "bg-teal-50 text-teal-700 ring-1 ring-teal-200",
+  // Print production
   print_queued: "bg-violet-50 text-violet-700 ring-1 ring-violet-200",
-  in_production: "bg-fuchsia-50 text-fuchsia-700 ring-1 ring-fuchsia-200",
-  packed: "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200",
+  in_production: "bg-violet-50 text-violet-700 ring-1 ring-violet-200",
+  packed: "bg-sky-50 text-sky-700 ring-1 ring-sky-200",
   shipped: "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
   delivered: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
-  refunded: "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
-  cancelled: "bg-zinc-100 text-zinc-600",
+  // Error
   failed: "bg-red-50 text-red-700 ring-1 ring-red-200",
 }
 
@@ -388,9 +399,9 @@ export default function AccountOrdersPage() {
     <main className="relative min-h-screen overflow-hidden px-4 pb-16 pt-28 md:px-6 md:pb-24 md:pt-32">
       {/* Background blobs */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[-8%] top-24 h-72 w-72 rounded-full bg-[radial-gradient(circle,_rgba(233,116,77,0.18),_transparent_68%)] blur-3xl" />
-        <div className="absolute right-[-6%] top-40 h-80 w-80 rounded-full bg-[radial-gradient(circle,_rgba(76,157,144,0.16),_transparent_70%)] blur-3xl" />
-        <div className="absolute bottom-0 left-1/3 h-96 w-96 rounded-full bg-[radial-gradient(circle,_rgba(134,95,168,0.1),_transparent_72%)] blur-3xl" />
+        <div className="absolute left-[-8%] top-24 h-72 w-72 rounded-full bg-[radial-gradient(circle,_var(--page-orb-a),_transparent_68%)] blur-3xl" />
+        <div className="absolute right-[-6%] top-40 h-80 w-80 rounded-full bg-[radial-gradient(circle,_var(--page-orb-b),_transparent_70%)] blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-96 w-96 rounded-full bg-[radial-gradient(circle,_var(--page-orb-c),_transparent_72%)] blur-3xl" />
       </div>
 
       <div className="relative mx-auto max-w-4xl space-y-5">

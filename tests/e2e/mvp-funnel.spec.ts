@@ -24,8 +24,81 @@ async function mockPersonalizeApi(page: Page) {
       contentType: "application/json",
       body: JSON.stringify({
         success: true,
-        imageUrl: "/stories/space-1.jpg",
+        status: "completed",
+        previewSessionId: "preview-session-test",
+        story: {
+          id: "3",
+          slug: "valentin-y-la-noche-de-los-dinosaurios",
+          title: "Valentín y la noche de los dinosaurios",
+        },
+        cover: {
+          sceneId: "cover",
+          pageNumber: 1,
+          title: "Portada",
+          text: "Portada de prueba",
+          imageUrl: "/stories/valentin-noche-dinosaurios/cover.png",
+          storage: {
+            bucket: "book-renders",
+            path: "preview-sessions/preview-session-test/cover.png",
+          },
+        },
+        scenes: [
+          {
+            sceneId: "spread-01-02",
+            pageNumber: 2,
+            title: "Escena de prueba",
+            text: "Vista previa de prueba",
+            imageUrl: "/stories/valentin-noche-dinosaurios/spread-01-02.png",
+            storage: {
+              bucket: "book-renders",
+              path: "preview-sessions/preview-session-test/spread-01-02.png",
+            },
+          },
+        ],
+        pages: [
+          {
+            sceneId: "cover",
+            pageNumber: 1,
+            title: "Portada",
+            text: "Portada de prueba",
+            imageUrl: "/stories/valentin-noche-dinosaurios/cover.png",
+            storage: {
+              bucket: "book-renders",
+              path: "preview-sessions/preview-session-test/cover.png",
+            },
+          },
+          {
+            sceneId: "spread-01-02",
+            pageNumber: 2,
+            title: "Escena de prueba",
+            text: "Vista previa de prueba",
+            imageUrl: "/stories/valentin-noche-dinosaurios/spread-01-02.png",
+            storage: {
+              bucket: "book-renders",
+              path: "preview-sessions/preview-session-test/spread-01-02.png",
+            },
+          },
+        ],
+        imageUrl: "/stories/valentin-noche-dinosaurios/cover.png",
         sceneText: "Vista previa de prueba",
+        preview_bundle: {
+          storyId: "3",
+          previewSessionId: "preview-session-test",
+        },
+      }),
+    });
+  });
+}
+
+async function mockCheckoutStatus(page: Page) {
+  await page.route("**/api/checkout/status", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        provider: "mercadopago",
+        enabled: true,
+        message: null,
       }),
     });
   });
@@ -38,23 +111,24 @@ async function completeWizardUntilPreview(page: Page) {
   await page.getByRole("button", { name: "Siguiente Paso" }).click();
   await page.getByPlaceholder("Ej: Lucas, Sofía...").fill("Santi");
   await page.getByRole("button", { name: "Siguiente Paso" }).click();
-  await page.getByText("El Explorador Espacial", { exact: false }).click();
-  await page.getByRole("button", { name: "Ver Resultado Mágico" }).click();
+  await page.getByText("Valentín y la noche de los dinosaurios", { exact: false }).click();
+  await page.getByRole("button", { name: "Ver obra maestra" }).click();
 
-  await expect(page.getByText("Tu cuento", { exact: false })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Valentín y la noche de los dinosaurios/i })).toBeVisible();
 }
 
 test("home hero CTA navigates to /crear on mobile", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
 
-  await page.getByRole("link", { name: /Crear Cuento Ahora/i }).click();
+  await page.getByRole("link", { name: /Subir su foto/i }).click();
   await expect(page).toHaveURL(/\/crear/);
   await expect(page.getByRole("button", { name: "Siguiente Paso" })).toBeVisible();
 });
 
 test("smoke mvp funnel with mocked backend", async ({ page, baseURL }) => {
   await mockPersonalizeApi(page);
+  await mockCheckoutStatus(page);
 
   await page.route("**/api/orders", async (route) => {
     await route.fulfill({
@@ -97,7 +171,7 @@ test("smoke mvp funnel with mocked backend", async ({ page, baseURL }) => {
   await page.goto("/crear");
   await completeWizardUntilPreview(page);
 
-  await page.getByRole("button", { name: "Solo Digital" }).click();
+  await page.getByRole("button", { name: "Descarga online" }).click();
   await page.getByRole("button", { name: /Pagar/ }).click();
   await page.waitForURL("**/success");
   await expect(page.getByText("¡Magia en camino!")).toBeVisible();
@@ -105,6 +179,7 @@ test("smoke mvp funnel with mocked backend", async ({ page, baseURL }) => {
 
 test("redirects to login when checkout requires auth", async ({ page }) => {
   await mockPersonalizeApi(page);
+  await mockCheckoutStatus(page);
 
   await page.route("**/api/orders", async (route) => {
     await route.fulfill({
@@ -117,7 +192,7 @@ test("redirects to login when checkout requires auth", async ({ page }) => {
   await page.goto("/crear");
   await completeWizardUntilPreview(page);
 
-  await page.getByRole("button", { name: "Solo Digital" }).click();
+  await page.getByRole("button", { name: "Descarga online" }).click();
   await page.getByRole("button", { name: /Pagar/ }).click();
   await expect(page).toHaveURL(/\/login\?next=/);
 });
@@ -126,7 +201,7 @@ test("redirects to login when checkout requires auth", async ({ page }) => {
 test("seo endpoints and security headers are exposed", async ({ page, request }) => {
   const robots = await request.get("/robots.txt");
   expect(robots.ok()).toBeTruthy();
-  expect(await robots.text()).toContain("User-agent");
+  expect(await robots.text()).toContain("User-Agent");
 
   const sitemap = await request.get("/sitemap.xml");
   expect(sitemap.ok()).toBeTruthy();

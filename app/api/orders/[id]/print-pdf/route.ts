@@ -2,12 +2,18 @@ import { NextResponse } from "next/server";
 import { handleRouteError } from "@/lib/api";
 import { ApiError, requireAuthenticatedUser } from "@/lib/auth";
 import { getPrintProduct } from "@/lib/print-products";
-import { buildSimplePdf } from "@/lib/pdf";
+import { rowsToStoryPages } from "@/lib/generated-pages";
+import { buildImageOnlyPdf } from "@/lib/story-pdf";
+import { resolveStorageUrlForClient } from "@/lib/storage";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 
 type RouteContext = {
   params: Promise<{ id: string }> | { id: string };
 };
+
+function cmToPoints(valueCm: number) {
+  return (valueCm / 2.54) * 72;
+}
 
 async function isAdmin(adminClient: ReturnType<typeof createSupabaseAdminClient>, userId: string) {
   const { data } = await adminClient.from("profiles").select("role").eq("id", userId).maybeSingle();
@@ -25,7 +31,7 @@ export async function GET(_request: Request, context: RouteContext) {
       throw new ApiError(403, "forbidden", "Admin access required");
     }
 
-    const [{ data: order }, { data: item }, { data: pages }, { data: shipping }] = await Promise.all([
+    const [{ data: order }, { data: item }, { data: pages }] = await Promise.all([
       adminClient.from("orders").select("id,status,created_at").eq("id", id).maybeSingle(),
       adminClient
         .from("order_items")
@@ -35,10 +41,9 @@ export async function GET(_request: Request, context: RouteContext) {
         .maybeSingle(),
       adminClient
         .from("generated_pages")
-        .select("page_number,page_type,width_px,height_px,status,error_message")
+        .select("page_number,prompt_used,image_url,page_type,width_px,height_px,status,error_message")
         .eq("order_id", id)
         .order("page_number", { ascending: true }),
-      adminClient.from("shipping_addresses").select("recipient_name,city,state,postal_code").eq("order_id", id).maybeSingle(),
     ]);
 
     if (!order || !item) {
@@ -46,26 +51,21 @@ export async function GET(_request: Request, context: RouteContext) {
     }
 
     const product = getPrintProduct((item.print_options_snapshot as { productId?: string } | null)?.productId as never);
-    const lines = [
-      `Orden: ${String(order.id).slice(0, 8)}`,
-      `Fecha: ${new Date(String(order.created_at)).toLocaleDateString("es-AR")}`,
-      `Estado: ${String(order.status)}`,
-      `Producto: ${product.title}`,
-      `Resolucion objetivo: ${product.recommendedResolution.width} x ${product.recommendedResolution.height}px`,
-      shipping
-        ? `Envio: ${String(shipping.recipient_name)} - ${String(shipping.city)} ${shipping.state ? `(${String(shipping.state)})` : ""}`
-        : "Envio: no cargado",
-      "",
-      "Paginas generadas:",
-      ...(pages ?? []).flatMap((page) => {
-        const dims =
-          page.width_px && page.height_px ? `${Number(page.width_px)}x${Number(page.height_px)}px` : "dimensiones desconocidas";
-        const warning = page.error_message ? ` | revisar: ${String(page.error_message)}` : "";
-        return [`P${Number(page.page_number)} ${String(page.page_type)} | ${String(page.status)} | ${dims}${warning}`];
-      }),
-    ];
+    const resolvedRows = await Promise.all(
+      (pages ?? []).map(async (page) => ({
+        ...page,
+        image_url: await resolveStorageUrlForClient(adminClient, page.image_url ? String(page.image_url) : null),
+      })),
+    );
 
-    const pdfBytes = buildSimplePdf(`StoryMagic Print Pack | ${product.shortTitle}`, lines);
+    const storyPages = rowsToStoryPages(resolvedRows);
+    const pageSizePoints = cmToPoints(21);
+    const pdfBytes = await buildImageOnlyPdf({
+      title: `StoryMagic Print Pack | ${product.shortTitle}`,
+      pages: storyPages,
+      pageWidthPoints: pageSizePoints,
+      pageHeightPoints: pageSizePoints,
+    });
 
     return new NextResponse(new Uint8Array(pdfBytes), {
       headers: {

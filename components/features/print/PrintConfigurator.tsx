@@ -22,8 +22,8 @@ interface PrintConfiguratorProps {
 }
 
 const PRODUCT_ORDER: PrintProductId[] = [
-    "photo_book_21x14_8_hard",
-    "photo_book_27_9x21_6_hard",
+    "photo_book_21x21_soft",
+    "photo_book_21x21_hard",
 ]
 
 function formatArs(value: number) {
@@ -52,7 +52,7 @@ export function PrintConfigurator({ config, onChange, basePrice }: PrintConfigur
                         Libro Físico
                     </h3>
                     <p className="text-sm text-[var(--play-text-muted)]">
-                        Elegí el formato impreso que mejor acompaña tu cuento.
+                        Ofrecemos un único tamaño de 21 x 21 cm, disponible en tapa blanda o tapa dura.
                     </p>
                 </div>
 
@@ -76,7 +76,7 @@ export function PrintConfigurator({ config, onChange, basePrice }: PrintConfigur
                                 <div className="mb-3 flex items-start justify-between gap-3">
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <h4 className={`font-bold ${isSelected ? "text-indigo-900" : "text-charcoal-800"}`}>
+                                            <h4 className={`font-bold ${isSelected ? "text-[var(--play-text-main)]" : "text-charcoal-800"}`}>
                                                 {product.title}
                                             </h4>
                                             {isPremium && (
@@ -100,14 +100,15 @@ export function PrintConfigurator({ config, onChange, basePrice }: PrintConfigur
                                         <span className="font-semibold text-[var(--play-text-main)]">Tamaño:</span> {product.sizeCm}
                                     </div>
                                     <div className="rounded-xl bg-[var(--play-surface-low)] px-3 py-2">
+                                        <span className="font-semibold text-[var(--play-text-main)]">Tapa:</span>{" "}
+                                        {product.cover === "hard" ? "Dura" : "Blanda"}
+                                    </div>
+                                    <div className="rounded-xl bg-[var(--play-surface-low)] px-3 py-2">
                                         <span className="font-semibold text-[var(--play-text-main)]">Base:</span> {product.basePages} páginas
                                     </div>
                                     <div className="rounded-xl bg-[var(--play-surface-low)] px-3 py-2">
                                         <span className="font-semibold text-[var(--play-text-main)]">Resolución objetivo:</span>{" "}
                                         {product.recommendedResolution.width} x {product.recommendedResolution.height}px
-                                    </div>
-                                    <div className="rounded-xl bg-[var(--play-surface-low)] px-3 py-2">
-                                        <span className="font-semibold text-[var(--play-text-main)]">Ratio:</span> {product.aspectRatio}
                                     </div>
                                 </div>
                             </button>
@@ -120,23 +121,23 @@ export function PrintConfigurator({ config, onChange, basePrice }: PrintConfigur
                 onClick={() => update("includeGiftWrap", !config.includeGiftWrap)}
                 className={`flex cursor-pointer items-center rounded-2xl border p-4 transition-all ${
                     config.includeGiftWrap
-                        ? "border-fuchsia-400 bg-fuchsia-50/40 shadow-sm"
-                        : "border-white/85 bg-white/70 hover:border-fuchsia-200"
+                        ? "border-[var(--play-accent-gift)]/40 bg-[var(--play-accent-gift-bg)] shadow-sm"
+                        : "border-white/85 bg-white/70 hover:border-[var(--play-accent-gift)]/20"
                 }`}
             >
                 <div
                     className={`mr-3 rounded-lg p-2.5 transition-colors ${
-                        config.includeGiftWrap ? "bg-fuchsia-100 text-fuchsia-600" : "bg-[var(--play-surface-low)] text-[var(--play-text-muted)]"
+                        config.includeGiftWrap ? "bg-[var(--play-accent-gift-light)]/40 text-[var(--play-accent-gift)]" : "bg-[var(--play-surface-low)] text-[var(--play-text-muted)]"
                     }`}
                 >
                     <Gift className="h-5 w-5" />
                 </div>
                 <div className="flex-1">
                     <div className="flex items-center justify-between">
-                        <h4 className={`font-bold ${config.includeGiftWrap ? "text-fuchsia-900" : "text-charcoal-700"}`}>
+                        <h4 className={`font-bold ${config.includeGiftWrap ? "text-[var(--play-text-main)]" : "text-charcoal-700"}`}>
                             Envolver para regalo
                         </h4>
-                        <span className="text-sm font-bold text-fuchsia-600">+{formatArs(GIFT_WRAP_PRICE_ARS)}</span>
+                        <span className="text-sm font-bold text-[var(--play-accent-gift)]">+{formatArs(GIFT_WRAP_PRICE_ARS)}</span>
                     </div>
                     <p className="text-xs text-charcoal-500">
                         Súmalo si quieres que llegue listo para regalar.
@@ -144,7 +145,7 @@ export function PrintConfigurator({ config, onChange, basePrice }: PrintConfigur
                 </div>
                 <div
                     className={`ml-4 flex h-6 w-6 items-center justify-center rounded-full border transition-all ${
-                        config.includeGiftWrap ? "border-fuchsia-500 bg-fuchsia-500" : "border-charcoal-200 bg-white"
+                        config.includeGiftWrap ? "border-[var(--play-accent-gift)] bg-[var(--play-accent-gift)]" : "border-charcoal-200 bg-white"
                     }`}
                 >
                     {config.includeGiftWrap && <Check className="h-4 w-4 text-white" />}
@@ -155,7 +156,9 @@ export function PrintConfigurator({ config, onChange, basePrice }: PrintConfigur
                 <p className="text-sm text-[var(--play-text-muted)]">Producto seleccionado</p>
                 <div className="mt-2 flex items-start justify-between gap-3">
                     <div>
-                        <p className="text-lg font-bold text-[var(--play-text-main)]">{selectedProduct.shortTitle} tapa dura</p>
+                        <p className="text-lg font-bold text-[var(--play-text-main)]">
+                            {selectedProduct.shortTitle} tapa {selectedProduct.cover === "hard" ? "dura" : "blanda"}
+                        </p>
                         <p className="text-xs text-[var(--play-text-muted)]">
                             Incluye {selectedProduct.basePages} páginas base.
                         </p>

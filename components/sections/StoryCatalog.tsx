@@ -7,6 +7,7 @@ import { ArrowRight, Eye, Filter, Star } from "lucide-react"
 import { STORIES, Story } from "@/lib/stories"
 import { WishlistButton } from "@/components/features/wishlist"
 import { BookPreview, useBookPreview } from "@/components/features/preview"
+import { BookCover } from "@/components/books/BookCover"
 
 interface StoryCatalogProps {
     title?: React.ReactNode
@@ -136,10 +137,11 @@ export function StoryCatalog({
                                         >
                                             {/* Story cover image */}
                                             <div className="relative mb-5 aspect-[3/4] overflow-hidden rounded-[26px] shadow-lg">
-                                                <img
-                                                    src={story.coverImage}
+                                                <BookCover
+                                                    imageSrc={story.coverImage}
+                                                    title={story.title}
                                                     alt={story.title}
-                                                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                                    imageClassName="transition-transform duration-500 group-hover:scale-105"
                                                 />
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/35 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 

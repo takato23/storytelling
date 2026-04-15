@@ -1,3 +1,7 @@
+// TODO: When MercadoPago credentials are available, add webhook signature verification.
+// MercadoPago sends x-signature header with HMAC-SHA256. Verify using:
+// ts + v1.{query_id}{data_id} signed with webhook secret.
+// Docs: https://www.mercadopago.com/developers/en/docs/your-integrations/notifications/webhooks
 import { NextResponse } from "next/server";
 import { handleRouteError } from "@/lib/api";
 import { ApiError } from "@/lib/auth";

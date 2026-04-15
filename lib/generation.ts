@@ -1,8 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getValentinDinoPersonalizedTitle } from "@/lib/books/valentin-dino-package";
 import { generateStoryPages } from "@/lib/story-generator";
+import { buildPreviewBundleFromPayload, generateValentinDinoOrderPages, isDinoStoryPreviewSupported } from "@/lib/dino-story-pipeline";
 import { serializePagePayload } from "@/lib/generated-pages";
-import { getImageDataUrlMetadata, isLikelyBlankImage } from "@/lib/image-data-url";
 import { generateImageWithGemini } from "@/lib/image-generator";
+import { validateImageDataUrl } from "@/lib/image-validation";
 import { getPrintProduct } from "@/lib/print-products";
 import type { PrintOptions } from "@/lib/types";
 import { ApiError } from "@/lib/auth";
@@ -22,7 +24,7 @@ interface OrderGenerationContext {
 interface GeneratedPageRecord {
   order_id: string;
   page_number: number;
-  page_type: "cover" | "story_page" | "ending";
+  page_type: "cover" | "story_page" | "ending" | "back_cover";
   render_purpose: "print_page";
   image_url: string | null;
   prompt_used: string;
@@ -189,33 +191,18 @@ function buildPagePrompt(params: {
 }
 
 function validateGeneratedPageImage(dataUrl: string, isPrintOrder: boolean, printOptions: PrintOptions) {
-  const metadata = getImageDataUrlMetadata(dataUrl);
   const product = getPrintProduct(printOptions.productId);
-  const issues: string[] = [];
-
-  if (metadata.width === null || metadata.height === null) {
-    issues.push("No se pudieron leer dimensiones de la imagen generada.");
-  } else {
-    if (metadata.width < metadata.height) {
-      issues.push("La imagen quedó en orientación vertical y requiere revisión manual.");
-    }
-
-    if (isPrintOrder) {
-      if (metadata.width < product.recommendedResolution.width || metadata.height < product.recommendedResolution.height) {
-        issues.push("La resolución quedó por debajo de la recomendada para imprenta.");
-      }
-    }
-  }
-
-  if (isLikelyBlankImage(dataUrl)) {
-    issues.push("La imagen generada parece demasiado liviana o vacía.");
-  }
+  const result = validateImageDataUrl(dataUrl, {
+    requireLandscape: true,
+    minWidth: isPrintOrder ? product.recommendedResolution.width : undefined,
+    minHeight: isPrintOrder ? product.recommendedResolution.height : undefined,
+  });
 
   return {
-    width: metadata.width,
-    height: metadata.height,
-    errorMessage: issues.length > 0 ? issues.join(" ") : null,
-    hardFailure: issues.some((issue) => issue.includes("orientación vertical") || issue.includes("vacía")),
+    width: result.width,
+    height: result.height,
+    errorMessage: result.issues.length > 0 ? result.issues.join(" ") : null,
+    hardFailure: result.hardFailure,
   };
 }
 
@@ -343,7 +330,57 @@ export async function retryGeneratedOrderPage(
   const childProfile = personalization?.child_profile as Record<string, unknown> | null;
   const payload = personalization?.personalization_payload as Record<string, unknown> | null;
   const childName = String(childProfile?.name ?? childProfile?.child_name ?? "Peque aventurero");
-  const storyTitle = String(story?.title ?? "Historia personalizada");
+  const isDinoStory = isDinoStoryPreviewSupported(orderItem?.story_id ? String(orderItem.story_id) : null);
+  const storyTitle = isDinoStory
+    ? getValentinDinoPersonalizedTitle(childName)
+    : String(story?.title ?? "Historia personalizada");
+  const childFeatures =
+    childProfile?.detected_features && typeof childProfile.detected_features === "object"
+      ? (childProfile.detected_features as Record<string, unknown>)
+      : childProfile;
+  const previewBundle = buildPreviewBundleFromPayload(payload?.preview_bundle);
+
+  if (isDinoStory) {
+    const nextVersion = currentPage?.version ? Number(currentPage.version) + 1 : 1;
+    const regeneratedBook = await generateValentinDinoOrderPages({
+      adminClient,
+      orderId: context.orderId,
+      childName,
+      childFeatures,
+      previewBundle,
+      version: nextVersion,
+    });
+
+    const { error } = await adminClient.from("generated_pages").upsert(regeneratedBook, {
+      onConflict: "order_id,page_number",
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const requestedPage = regeneratedBook.find((entry) => entry.page_number === params.pageNumber);
+    if (!requestedPage) {
+      throw new ApiError(404, "not_found", "Page not found for regeneration");
+    }
+
+    await insertOrderEvent(adminClient, {
+      orderId: context.orderId,
+      eventType: "page_regenerated",
+      fromStatus: context.orderStatus,
+      toStatus: context.orderStatus,
+      payload: {
+        page_number: params.pageNumber,
+        version: requestedPage.version,
+        status: requestedPage.status,
+        override_prompt: params.overridePrompt ?? null,
+        regeneration_scope: "storybook_full_refresh",
+      },
+    });
+
+    return requestedPage;
+  }
+
   const storyResult = await generateStoryPages({
     childName,
     storyTitle,
@@ -444,16 +481,57 @@ export async function processOrderGeneration(
     const childProfile = personalization?.child_profile as Record<string, unknown> | null;
     const payload = personalization?.personalization_payload as Record<string, unknown> | null;
     const childName = String(childProfile?.name ?? childProfile?.child_name ?? "Peque aventurero");
-    const storyTitle = String(story?.title ?? "Historia personalizada");
+    const childFeatures =
+      childProfile?.detected_features && typeof childProfile.detected_features === "object"
+        ? (childProfile.detected_features as Record<string, unknown>)
+        : childProfile;
 
-    const storyResult = await generateStoryPages({
-      childName,
-      storyTitle,
-      readingLevel: typeof payload?.reading_level === "string" ? payload.reading_level : null,
-      familyMembers: Array.isArray(payload?.family_members) ? (payload.family_members as Array<{ name?: string }>) : [],
-    });
+    const previewBundle = buildPreviewBundleFromPayload(payload?.preview_bundle);
+    const isDinoStory = isDinoStoryPreviewSupported(orderItem?.story_id ? String(orderItem.story_id) : null);
+    const storyTitle = isDinoStory
+      ? getValentinDinoPersonalizedTitle(childName)
+      : String(story?.title ?? "Historia personalizada");
 
-    const pageRecords = await generatePagesForOrder(context, adminClient, storyTitle, childName, storyResult.pages);
+    const storyResult = isDinoStory
+      ? {
+          pages: [],
+          provider: previewBundle?.provider ?? "gemini",
+        }
+      : await generateStoryPages({
+          childName,
+          storyTitle,
+          readingLevel: typeof payload?.reading_level === "string" ? payload.reading_level : null,
+          familyMembers: Array.isArray(payload?.family_members) ? (payload.family_members as Array<{ name?: string }>) : [],
+        });
+
+    const pageRecords = isDinoStory
+      ? await generateValentinDinoOrderPages({
+          adminClient,
+          orderId: context.orderId,
+          childName,
+          childFeatures,
+          previewBundle,
+        })
+      : await generatePagesForOrder(context, adminClient, storyTitle, childName, storyResult.pages);
+
+    if (isDinoStory) {
+      const { error: pagesError } = await adminClient.from("generated_pages").upsert(pageRecords, {
+        onConflict: "order_id,page_number",
+      });
+
+      if (pagesError) {
+        throw new Error(pagesError.message);
+      }
+    }
+
+    const failedPages = pageRecords.filter((page) => page.status !== "ready" || !page.image_url);
+    if (failedPages.length > 0) {
+      throw new Error(
+        `Failed to generate ${failedPages.length} page(s): ${failedPages
+          .map((page) => `P${page.page_number}`)
+          .join(", ")}`,
+      );
+    }
     const thumbnailUrl = pageRecords.find((page) => page.image_url)?.image_url ?? null;
 
     const assetRows = [

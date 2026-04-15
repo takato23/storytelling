@@ -21,10 +21,24 @@ const envSchema = z.object({
   GEMINI_IMAGE_MODEL: z.string().min(1).optional(),
   GEMINI_QUALITY_MODEL: z.string().min(1).optional(),
   GEMINI_TEXT_MODEL: z.string().min(1).optional(),
+  STORY_IMAGE_EDGE_URL: z.string().url().optional(),
+  STORY_IMAGE_EDGE_MODEL: z.string().min(1).optional(),
+  // Image provider routing (see lib/image-providers/index.ts)
+  IMAGE_PROVIDER: z
+    .enum(["gemini", "flux-kontext-pro", "flux-kontext-max", "seedream"])
+    .optional(),
+  IMAGE_PROVIDER_FALLBACKS: z.string().optional(),
+  // fal.ai credentials (shared by flux-kontext and seedream adapters)
+  FAL_KEY: z.string().min(1).optional(),
+  FAL_FLUX_KONTEXT_MODEL: z.string().min(1).optional(),
+  FAL_SEEDREAM_MODEL: z.string().min(1).optional(),
+  // Privacy: retention window (hours) for uploaded child reference photos
+  CHILD_PHOTO_RETENTION_HOURS: z.coerce.number().int().min(1).max(720).optional(),
   NEXT_PUBLIC_POSTHOG_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
   ALLOW_STORY_FALLBACK: z.enum(["true", "false"]).optional(),
   DISABLE_FREE_PREVIEWS: z.enum(["true", "false"]).optional(),
+  ALLOW_LOCAL_PREVIEW_BYPASS: z.enum(["true", "false"]).optional(),
   FREE_PREVIEW_CREDITS_DEFAULT: z.coerce.number().int().min(0).optional(),
   PREVIEW_IMAGE_ESTIMATED_COST_USD: z.coerce.number().nonnegative().optional(),
   VERCEL_ENV: z.enum(["development", "preview", "production"]).optional(),
@@ -80,6 +94,8 @@ export function getEnv() {
     googleAiApiKey: env.GEMINI_API_KEY ?? env.GOOGLE_AI_API_KEY ?? null,
     allowStoryFallback: env.ALLOW_STORY_FALLBACK === "true" || env.NODE_ENV !== "production",
     previewsDisabled: env.DISABLE_FREE_PREVIEWS === "true",
+    allowLocalPreviewBypass:
+      env.ALLOW_LOCAL_PREVIEW_BYPASS === "true" || env.NODE_ENV !== "production",
     freePreviewCreditsDefault: env.FREE_PREVIEW_CREDITS_DEFAULT ?? 2,
     previewImageEstimatedCostUsd: env.PREVIEW_IMAGE_ESTIMATED_COST_USD ?? 0.05,
   };
@@ -161,8 +177,55 @@ export function getGeminiConfig() {
   const env = getEnv();
   return {
     apiKey: env.googleAiApiKey,
-    imageModel: env.GEMINI_IMAGE_MODEL ?? "gemini-3.1-flash",
-    qualityModel: env.GEMINI_QUALITY_MODEL ?? env.GEMINI_TEXT_MODEL ?? "gemini-2.0-flash",
+    imageModel: env.GEMINI_IMAGE_MODEL ?? "gemini-3.1-flash-image-preview",
+    qualityModel: env.GEMINI_QUALITY_MODEL ?? env.GEMINI_TEXT_MODEL ?? "gemini-2.5-flash",
+    // NOTE: no default fallback URL. The previous hardcoded Supabase endpoint
+    // belonged to a retired project; configure STORY_IMAGE_EDGE_URL explicitly
+    // if you want to route Gemini calls through an edge function.
+    imageEdgeUrl: env.STORY_IMAGE_EDGE_URL ?? null,
+    imageEdgeModel: env.STORY_IMAGE_EDGE_MODEL ?? null,
+  };
+}
+
+/**
+ * fal.ai configuration shared across Flux Kontext and Seedream adapters.
+ * Without FAL_KEY, those providers are reported as not configured and the
+ * router falls through to the next entry in the chain.
+ */
+export function getFalConfig() {
+  const env = getEnv();
+  return {
+    apiKey: env.FAL_KEY ?? null,
+    fluxKontextModel: env.FAL_FLUX_KONTEXT_MODEL ?? null,
+    seedreamModel: env.FAL_SEEDREAM_MODEL ?? null,
+  };
+}
+
+/**
+ * Primary + fallback image provider chain. Example:
+ *   IMAGE_PROVIDER=flux-kontext-max
+ *   IMAGE_PROVIDER_FALLBACKS=seedream,gemini
+ */
+export function getImageRoutingConfig() {
+  const env = getEnv();
+  const fallbacks = (env.IMAGE_PROVIDER_FALLBACKS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return {
+    primary: env.IMAGE_PROVIDER ?? null,
+    fallbacks,
+  };
+}
+
+/**
+ * Privacy / retention configuration for uploaded child photos. Defaults to
+ * 24 hours. See docs/privacy/POLICY.md and scripts/privacy/purge-child-photos.ts.
+ */
+export function getPrivacyConfig() {
+  const env = getEnv();
+  return {
+    childPhotoRetentionHours: env.CHILD_PHOTO_RETENTION_HOURS ?? 24,
   };
 }
 
@@ -177,6 +240,16 @@ export function validateProductionEnvironment() {
   requireValue(env.NEXT_PUBLIC_SUPABASE_URL, "NEXT_PUBLIC_SUPABASE_URL");
   requireValue(env.NEXT_PUBLIC_SUPABASE_ANON_KEY, "NEXT_PUBLIC_SUPABASE_ANON_KEY");
   requireValue(env.SUPABASE_SERVICE_ROLE_KEY, "SUPABASE_SERVICE_ROLE_KEY");
+  requireValue(env.GEMINI_API_KEY ?? env.GOOGLE_AI_API_KEY ?? undefined, "GEMINI_API_KEY or GOOGLE_AI_API_KEY");
+
+  if ((env.CHECKOUT_PROVIDER ?? "mercadopago") === "mercadopago") {
+    requireValue(env.MERCADOPAGO_ACCESS_TOKEN, "MERCADOPAGO_ACCESS_TOKEN");
+  }
+
+  if (env.CHECKOUT_PROVIDER === "stripe") {
+    requireValue(env.STRIPE_SECRET_KEY, "STRIPE_SECRET_KEY");
+    requireValue(env.STRIPE_WEBHOOK_SECRET, "STRIPE_WEBHOOK_SECRET");
+  }
 
   validatedProduction = true;
 }

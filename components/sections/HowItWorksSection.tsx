@@ -12,25 +12,25 @@ export function HowItWorksSection() {
             title: "Subí tu foto",
             description: "Una foto clara alcanza para arrancar.",
             icon: Camera,
-            accent: "text-rose-500",
+            accent: "text-[var(--nido-rose)]",
         },
         {
             title: "Elegí la aventura",
             description: "Espacio, dinosaurios, fútbol y más.",
             icon: BookOpen,
-            accent: "text-emerald-500",
+            accent: "text-[var(--nido-sage-strong)]",
         },
         {
             title: "Generamos la preview",
             description: "Ves la portada antes de pagar.",
             icon: Wand2,
-            accent: "text-purple-500",
+            accent: "text-[var(--play-primary)]",
         },
         {
             title: "Recibilo como quieras",
             description: "Digital al instante o impreso.",
             icon: Gift,
-            accent: "text-amber-500",
+            accent: "text-[var(--nido-peach)]",
         }
     ]
 

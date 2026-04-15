@@ -3,6 +3,7 @@ import { getEnv, validateProductionEnvironment } from "./lib/config";
 
 const env = getEnv();
 const isDev = env.NODE_ENV !== "production";
+const shouldUpgradeInsecureRequests = env.VERCEL_ENV === "production";
 
 validateProductionEnvironment();
 
@@ -44,7 +45,7 @@ function buildContentSecurityPolicy() {
     "worker-src 'self' blob:",
   ];
 
-  if (!isDev) {
+  if (shouldUpgradeInsecureRequests) {
     directives.push("upgrade-insecure-requests");
   }
 

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { buildStorageUri } from "@/lib/storage";
 import type {
   Currency,
   OrderFormat,
@@ -75,6 +76,7 @@ export async function createOrderDraft(
 
   const orderId = String(order.id);
 
+  try {
   const { error: itemError } = await adminClient.from("order_items").insert({
     order_id: orderId,
     story_id: params.storyId,
@@ -122,10 +124,20 @@ export async function createOrderDraft(
     }
   }
 
-  const previewImageUrl =
-    typeof params.personalizationPayload.preview_image_url === "string"
-      ? params.personalizationPayload.preview_image_url
+  const previewBundle =
+    params.personalizationPayload.preview_bundle &&
+    typeof params.personalizationPayload.preview_bundle === "object"
+      ? (params.personalizationPayload.preview_bundle as {
+          cover?: { storage?: { bucket?: string; path?: string } };
+        })
       : null;
+
+  const previewImageUrl =
+    previewBundle?.cover?.storage?.bucket && previewBundle?.cover?.storage?.path
+      ? buildStorageUri(previewBundle.cover.storage.bucket, previewBundle.cover.storage.path)
+      : typeof params.personalizationPayload.preview_image_url === "string"
+        ? params.personalizationPayload.preview_image_url
+        : null;
 
   if (previewImageUrl) {
     const { error: previewAssetError } = await adminClient.from("digital_assets").upsert(
@@ -150,6 +162,12 @@ export async function createOrderDraft(
     toStatus: "draft",
     note: "Order draft created",
   });
+  } catch (error) {
+    // Cleanup: cascade-delete the order to avoid orphaned partial data.
+    // TODO: Post-launch, migrate to a PL/pgSQL function for true atomicity.
+    await adminClient.from("orders").delete().eq("id", orderId);
+    throw error;
+  }
 
   return orderId;
 }

@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { handleRouteError } from "@/lib/api";
 import { requireAuthenticatedUser } from "@/lib/auth";
+import { getCheckoutAvailability } from "@/lib/checkout-status";
 import { getRequestId, logEvent, setRequestIdHeader } from "@/lib/observability";
 import { createOrderDraft } from "@/lib/orders";
+import { enforceRateLimit } from "@/lib/rate-limit";
+import { getCheckoutProvider } from "@/lib/mercadopago";
 import {
   buildPricing,
   getLatestFxUsdArs,
@@ -19,8 +22,25 @@ export async function POST(request: Request) {
   const route = "/api/orders";
 
   try {
+    const limited = enforceRateLimit(request, { key: route, limit: 10, windowMs: 60_000 });
+    if (limited) return setRequestIdHeader(limited, requestId);
+
     const { user } = await requireAuthenticatedUser();
     logEvent("info", "orders_create.request", { request_id: requestId, route, user_id: user.id });
+    const checkoutAvailability = getCheckoutAvailability();
+    if (!checkoutAvailability.enabled) {
+      const response = NextResponse.json(
+        {
+          error: "checkout_unavailable",
+          message: checkoutAvailability.message,
+          provider: checkoutAvailability.provider,
+          reason: checkoutAvailability.reason,
+        },
+        { status: 503 },
+      );
+      return setRequestIdHeader(response, requestId);
+    }
+
     const payload = CreateOrderRequestSchema.parse(await request.json());
 
     const adminClient = createSupabaseAdminClient();
@@ -53,7 +73,7 @@ export async function POST(request: Request) {
       storyId: payload.story_id,
       format: payload.format,
       currency: payload.currency,
-      paymentProvider: payload.payment_provider,
+      paymentProvider: getCheckoutProvider(),
       subtotal: pricing.subtotal,
       shippingFee: pricing.shipping_fee,
       total: pricing.total,

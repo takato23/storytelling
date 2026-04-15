@@ -5,11 +5,11 @@ export const GEMINI_CONFIG = {
     // Models available through Gemini API
     models: {
         // For text generation and understanding
-        text: "gemini-1.5-pro",
+        text: "gemini-2.5-flash",
         // For image generation (Imagen 3)
         image: "imagen-3.0-generate-001",
         // For vision tasks (understanding images)
-        vision: "gemini-1.5-pro",
+        vision: "gemini-2.5-flash",
     },
 
     // Default generation parameters

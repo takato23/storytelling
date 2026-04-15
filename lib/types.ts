@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { DEFAULT_PRINT_PRODUCT_ID } from "@/lib/print-products";
+import { VALENTIN_DINO_STORY_ID } from "@/lib/books/valentin-dino-package";
 
 export const CurrencySchema = z.enum(["USD", "ARS"]);
 export type Currency = z.infer<typeof CurrencySchema>;
@@ -11,7 +12,7 @@ export const PaymentProviderSchema = z.enum(["mercadopago", "stripe"]);
 export type PaymentProvider = z.infer<typeof PaymentProviderSchema>;
 
 export const PrintOptionsSchema = z.object({
-  productId: z.enum(["photo_book_21x14_8_hard", "photo_book_27_9x21_6_hard"]).default(DEFAULT_PRINT_PRODUCT_ID),
+  productId: z.enum(["photo_book_21x21_soft", "photo_book_21x21_hard"]).default(DEFAULT_PRINT_PRODUCT_ID),
   includeGiftWrap: z.boolean().default(false),
 });
 export type PrintOptions = z.infer<typeof PrintOptionsSchema>;
@@ -48,6 +49,27 @@ export const CreateOrderRequestSchema = z
         message: "shipping_address is required for print format",
         path: ["shipping_address"],
       });
+    }
+
+    if (value.story_id === VALENTIN_DINO_STORY_ID) {
+      const previewSessionId = value.personalization_payload.preview_session_id;
+      const previewBundle = value.personalization_payload.preview_bundle;
+
+      if (typeof previewSessionId !== "string" || previewSessionId.trim().length < 10) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "preview_session_id is required for the active dino story",
+          path: ["personalization_payload", "preview_session_id"],
+        });
+      }
+
+      if (!previewBundle || typeof previewBundle !== "object") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "preview_bundle is required for the active dino story",
+          path: ["personalization_payload", "preview_bundle"],
+        });
+      }
     }
   });
 export type CreateOrderRequest = z.infer<typeof CreateOrderRequestSchema>;

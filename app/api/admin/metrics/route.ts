@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { handleRouteError } from "@/lib/api";
 import { requireAdminUser } from "@/lib/auth";
 import { getEnv } from "@/lib/config";
+import { getGeminiUsageStats } from "@/lib/gemini-quota";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 
 const PAID_OR_AFTER_STATUSES = new Set([
@@ -188,6 +189,7 @@ export async function GET(request: Request) {
           total: estimatedPreviewCostUsd,
           unit_cost: getEnv().previewImageEstimatedCostUsd,
         },
+        gemini_api_usage: getGeminiUsageStats(),
       },
     });
   } catch (error) {

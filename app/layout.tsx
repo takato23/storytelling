@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Caveat, Nunito, Playfair_Display } from "next/font/google";
+import { Caveat, Nunito, Playfair_Display, Quicksand } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { LanguageProvider } from "@/components/features/language/LanguageContext";
@@ -25,6 +25,12 @@ const caveat = Caveat({
   variable: "--font-caveat",
   subsets: ["latin"],
   weight: ["600", "700"],
+});
+
+const quicksand = Quicksand({
+  variable: "--font-quicksand",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
 });
 
 const siteOrigin = getPublicSiteOriginForMetadata() ?? "http://localhost:3005";
@@ -73,7 +79,7 @@ export default function RootLayout({
     <html lang="es" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${nunito.variable} ${playfair.variable} ${caveat.variable} font-sans antialiased bg-cream-50`}
+        className={`${nunito.variable} ${playfair.variable} ${caveat.variable} ${quicksand.variable} font-sans antialiased bg-cream-50`}
       >
         <ThemeProvider>
           <LanguageProvider>

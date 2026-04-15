@@ -1,4 +1,5 @@
 import { storyMocks, findStoryMockByIdOrSlug, type StoryMockContent } from "@/lib/site-content"
+import { VALENTIN_DINO_STORY_ID } from "@/lib/books/valentin-dino-package";
 
 type StoryMockOnlyFields =
   | "mockStatus"
@@ -37,11 +38,16 @@ function toStory(story: StoryMockContent): Story {
   }
 }
 
-export const STORIES: Story[] = storyMocks.map(toStory)
+const commercialStoryMocks = storyMocks.filter((story) => story.id === VALENTIN_DINO_STORY_ID);
+
+export const STORIES: Story[] = commercialStoryMocks.map(toStory)
 
 export function findStoryByIdOrSlug(value: string | null | undefined): Story | null {
-  const storyMock = findStoryMockByIdOrSlug(value)
+  const storyMock = commercialStoryMocks.find(
+    (story) => story.id === value?.trim() || story.slug === value?.trim(),
+  ) ?? findStoryMockByIdOrSlug(value)
   if (!storyMock) return null
+  if (storyMock.id !== VALENTIN_DINO_STORY_ID) return null
   return toStory(storyMock)
 }
 

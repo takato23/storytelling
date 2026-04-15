@@ -5,6 +5,7 @@ import { FormEvent, Suspense, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
 import { hasSupabaseCredentials } from "@/lib/supabase/env"
+import { BookOpen, Sparkles } from "lucide-react"
 
 function getSafeNextPath(rawPath: string | null, fallback = "/cuenta/pedidos") {
     if (!rawPath) return fallback
@@ -54,66 +55,95 @@ function LoginPageContent() {
     }
 
     return (
-        <main className="page-shell flex min-h-screen items-center justify-center px-4 py-16">
-            <div className="surface-panel w-full max-w-md rounded-3xl p-8">
-                <h1 className="mb-2 text-3xl font-serif text-[var(--text-primary)]">Entrar</h1>
-                <p className="mb-8 text-[var(--text-secondary)]">Accede a tu cuenta para usar tus previews gratis y continuar con tu compra.</p>
+        <main className="min-h-screen bg-[var(--play-surface)] flex items-center justify-center px-4 py-16 relative overflow-hidden">
+            {/* Background decoration */}
+            <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-[var(--play-primary)]/[0.05] rounded-full blur-[100px]" />
+                <div className="absolute bottom-[-15%] left-[-10%] w-[400px] h-[400px] bg-[var(--play-secondary-container)]/[0.08] rounded-full blur-[80px]" />
+            </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    <div>
-                        <label htmlFor="email" className="mb-1 block text-sm font-medium text-[var(--text-secondary)]">
-                            Email
-                        </label>
-                        <input
-                            id="email"
-                            type="email"
-                            autoComplete="email"
-                            value={email}
-                            onChange={(event) => setEmail(event.target.value)}
-                            required
-                            className="form-field"
-                        />
+            <div className="relative z-10 w-full max-w-md">
+                {/* Brand header */}
+                <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[var(--play-primary)] text-white mb-4 shadow-lg shadow-[var(--play-primary)]/20">
+                        <BookOpen className="w-8 h-8" />
                     </div>
+                    <h1 className="text-3xl font-bold font-serif text-[var(--play-text-main)]">Bienvenido de vuelta</h1>
+                    <p className="mt-2 text-[var(--play-text-muted)]">Accede para usar tus previews gratis y continuar con tu compra.</p>
+                </div>
 
-                    <div>
-                        <label htmlFor="password" className="mb-1 block text-sm font-medium text-[var(--text-secondary)]">
-                            Contraseña
-                        </label>
-                        <input
-                            id="password"
-                            type="password"
-                            autoComplete="current-password"
-                            value={password}
-                            onChange={(event) => setPassword(event.target.value)}
-                            required
-                            className="form-field"
-                        />
-                    </div>
+                {/* Login card */}
+                <div className="bg-white/80 backdrop-blur-xl rounded-[var(--play-radius-panel)] p-8 shadow-[var(--shadow-card)] border border-white/60">
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div>
+                            <label htmlFor="email" className="mb-1.5 block text-sm font-semibold text-[var(--play-text-main)]">
+                                Email
+                            </label>
+                            <input
+                                id="email"
+                                type="email"
+                                autoComplete="email"
+                                value={email}
+                                onChange={(event) => setEmail(event.target.value)}
+                                required
+                                className="form-field"
+                                placeholder="tu@email.com"
+                            />
+                        </div>
 
-                    {error && (
-                        <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                            {error}
+                        <div>
+                            <label htmlFor="password" className="mb-1.5 block text-sm font-semibold text-[var(--play-text-main)]">
+                                Contraseña
+                            </label>
+                            <input
+                                id="password"
+                                type="password"
+                                autoComplete="current-password"
+                                value={password}
+                                onChange={(event) => setPassword(event.target.value)}
+                                required
+                                className="form-field"
+                                placeholder="••••••••"
+                            />
+                        </div>
+
+                        {error && (
+                            <p role="alert" className="text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
+                                {error}
+                            </p>
+                        )}
+
+                        <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="gummy-button play-primary-button w-full rounded-xl py-3.5 font-bold text-base transition-all disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center gap-2"
+                        >
+                            {isLoading ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                    Entrando...
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles className="w-4 h-4" />
+                                    Entrar
+                                </>
+                            )}
+                        </button>
+                    </form>
+
+                    <div className="mt-6 pt-5 border-t border-[var(--play-outline)]/20 text-center">
+                        <p className="text-sm text-[var(--play-text-muted)]">
+                            ¿No tienes cuenta?{" "}
+                            <Link
+                                href={`/register?next=${encodeURIComponent(nextPath)}`}
+                                className="font-bold text-[var(--play-primary)] hover:text-[var(--play-primary-strong)] transition-colors hover:underline"
+                            >
+                                Regístrate gratis
+                            </Link>
                         </p>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="public-button-primary w-full rounded-xl py-3 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                        {isLoading ? "Entrando..." : "Entrar"}
-                    </button>
-                </form>
-
-                <p className="mt-6 text-sm text-[var(--text-secondary)]">
-                    ¿No tienes cuenta?{" "}
-                    <Link
-                        href={`/register?next=${encodeURIComponent(nextPath)}`}
-                        className="public-link font-semibold hover:underline"
-                    >
-                        Regístrate
-                    </Link>
-                </p>
+                    </div>
+                </div>
             </div>
         </main>
     )
@@ -121,9 +151,12 @@ function LoginPageContent() {
 
 function LoadingFallback() {
     return (
-        <main className="page-shell flex min-h-screen items-center justify-center px-4 py-16">
-            <div className="surface-panel w-full max-w-md rounded-3xl p-8">
-                <p className="text-[var(--text-secondary)]">Cargando...</p>
+        <main className="min-h-screen bg-[var(--play-surface)] flex items-center justify-center px-4 py-16">
+            <div className="bg-white/80 backdrop-blur-xl w-full max-w-md rounded-[var(--play-radius-panel)] p-8 shadow-[var(--shadow-card)]">
+                <div className="flex items-center justify-center gap-3 text-[var(--play-text-muted)]">
+                    <div className="w-5 h-5 border-2 border-[var(--play-primary)]/30 border-t-[var(--play-primary)] rounded-full animate-spin" />
+                    Cargando...
+                </div>
             </div>
         </main>
     )

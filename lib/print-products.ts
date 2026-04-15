@@ -1,12 +1,12 @@
-export type PrintProductId = "photo_book_21x14_8_hard" | "photo_book_27_9x21_6_hard";
+export type PrintProductId = "photo_book_21x21_soft" | "photo_book_21x21_hard";
 
 export interface PrintProductDefinition {
   id: PrintProductId;
   title: string;
   shortTitle: string;
   sizeCm: string;
-  cover: "hard";
-  orientation: "landscape";
+  cover: "soft" | "hard";
+  orientation: "square";
   basePages: number;
   baseCostArs: number;
   extraPageCostArs: number;
@@ -20,45 +20,45 @@ export interface PrintProductDefinition {
 }
 
 export const PRINT_PRODUCTS: Record<PrintProductId, PrintProductDefinition> = {
-  photo_book_21x14_8_hard: {
-    id: "photo_book_21x14_8_hard",
-    title: "Fotolibro 21 x 14,8 cm Tapa Dura",
-    shortTitle: "21 x 14,8 cm",
-    sizeCm: "21 x 14,8 cm",
-    cover: "hard",
-    orientation: "landscape",
+  photo_book_21x21_soft: {
+    id: "photo_book_21x21_soft",
+    title: "Fotolibro 21 x 21 cm Tapa Blanda",
+    shortTitle: "21 x 21 cm",
+    sizeCm: "21 x 21 cm",
+    cover: "soft",
+    orientation: "square",
     basePages: 22,
-    baseCostArs: 21500,
-    extraPageCostArs: 350,
+    baseCostArs: 18500,
+    extraPageCostArs: 300,
     recommendedResolution: {
       width: 3000,
-      height: 2115,
+      height: 3000,
     },
-    aspectRatio: "1.42:1",
-    description: "Formato recomendado para lanzamiento. Buen equilibrio entre costo, lectura y calidad.",
+    aspectRatio: "1:1",
+    description: "Formato único de lanzamiento. La opción más accesible dentro del libro físico 21 x 21 cm.",
     launchTier: "launch",
   },
-  photo_book_27_9x21_6_hard: {
-    id: "photo_book_27_9x21_6_hard",
-    title: "Fotolibro 27,9 x 21,6 cm Tapa Dura",
-    shortTitle: "27,9 x 21,6 cm",
-    sizeCm: "27,9 x 21,6 cm",
+  photo_book_21x21_hard: {
+    id: "photo_book_21x21_hard",
+    title: "Fotolibro 21 x 21 cm Tapa Dura",
+    shortTitle: "21 x 21 cm",
+    sizeCm: "21 x 21 cm",
     cover: "hard",
-    orientation: "landscape",
+    orientation: "square",
     basePages: 22,
-    baseCostArs: 30000,
-    extraPageCostArs: 650,
+    baseCostArs: 23500,
+    extraPageCostArs: 380,
     recommendedResolution: {
-      width: 3600,
-      height: 2785,
+      width: 3000,
+      height: 3000,
     },
-    aspectRatio: "1.29:1",
-    description: "Versión premium con páginas más grandes para ilustraciones más protagonistas.",
+    aspectRatio: "1:1",
+    description: "Mismo formato 21 x 21 cm con una terminación más firme y premium.",
     launchTier: "premium",
   },
 };
 
-export const DEFAULT_PRINT_PRODUCT_ID: PrintProductId = "photo_book_21x14_8_hard";
+export const DEFAULT_PRINT_PRODUCT_ID: PrintProductId = "photo_book_21x21_hard";
 export const STORYTELLING_PRINT_MARGIN_ARS = 8490;
 export const GIFT_WRAP_PRICE_ARS = 5990;
 

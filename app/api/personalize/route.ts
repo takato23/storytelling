@@ -1,38 +1,68 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { handleRouteError } from "@/lib/api";
-import { requireAuthenticatedUser } from "@/lib/auth";
-import { getEnv } from "@/lib/config";
-import { generateImageWithGemini } from "@/lib/image-generator";
-import { getRequestId, logEvent, setRequestIdHeader } from "@/lib/observability";
-import { finalizePreviewGeneration, reservePreviewCredit } from "@/lib/preview-limits";
-import { addPreviewWatermark } from "@/lib/preview-watermark";
-import { enforceRateLimit } from "@/lib/rate-limit";
-import { STORIES } from "@/lib/stories";
-import { createSupabaseAdminClient } from "@/lib/supabase";
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { handleRouteError } from '@/lib/api';
+import {
+  createValentinDinoPreviewSession,
+  getValentinDinoPreviewSessionState,
+  processValentinDinoPreviewSessionStep,
+  type PreviewSessionState,
+} from '@/lib/dino-story-pipeline';
+import {
+  getValentinDinoPersonalizedTitle,
+  VALENTIN_DINO_BOOK,
+  VALENTIN_DINO_STORY_ID,
+} from '@/lib/books/valentin-dino-package';
+import { analyzeChildPhotoWithGemini } from '@/lib/image-generator';
+import { getRequestId, logEvent, setRequestIdHeader } from '@/lib/observability';
+import { enforceRateLimit } from '@/lib/rate-limit';
+import { recordChildPhotoConsent } from '@/lib/privacy/consent';
+import { createSupabaseAdminClient } from '@/lib/supabase';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const PREVIEW_STYLE_BRAND =
-  "Ilustración CGI infantil premium, render 3D tipo Pixar, iluminación cinematográfica suave, atmósfera cálida y amigable, detalles limpios, encuadre editorial.";
 
 const AnalyzePayloadSchema = z.object({
-  action: z.literal("analyze"),
+  action: z.literal('analyze'),
   imageBase64: z.string().min(50),
 });
 
+const ConsentSchema = z.object({
+  accepted: z.literal(true),
+  version: z.string().min(1).max(32),
+  text: z.string().min(10).max(2000),
+});
+
 const GeneratePreviewPayloadSchema = z.object({
-  action: z.literal("generate"),
+  action: z.literal('generate'),
   bookId: z.string().min(1),
-  childFeatures: z.record(z.string(), z.unknown()).optional(),
-  imageBase64: z.string().min(50).optional(),
+  childName: z.string().min(2).max(50).regex(/^[\p{L}\p{M}\p{N}\s''-]+$/u).optional(),
+  childFeatures: z.object({
+    hairColor: z.string().max(50).optional(),
+    hairType: z.string().max(50).optional(),
+    skinTone: z.string().max(50).optional(),
+    eyeColor: z.string().max(50).optional(),
+    approximateAge: z.number().int().min(1).max(18).optional(),
+    gender: z.enum(["niño", "niña", "neutral"]).optional(),
+    distinctiveFeatures: z.string().max(200).nullable().optional(),
+    faceShape: z.string().max(50).optional(),
+  }).optional(),
+  imageBase64: z.string().min(50),
+  model: z.string().min(1).optional(),
+  // Required by privacy policy: the uploader must explicitly accept the
+  // consent text before the reference photo is processed. See
+  // components/privacy/ChildPhotoConsent.tsx and docs/privacy/POLICY.md.
+  consent: ConsentSchema,
+});
+
+const PreviewSessionQuerySchema = z.object({
+  previewSessionId: z.string().uuid(),
 });
 
 const PersonalizePayloadSchema = z.union([AnalyzePayloadSchema, GeneratePreviewPayloadSchema]);
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
 
 function stripDataUrlPrefix(base64: string) {
-  return base64.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, "");
+  return base64.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, '');
 }
 
 function estimateBytesFromBase64(base64: string) {
@@ -42,22 +72,72 @@ function estimateBytesFromBase64(base64: string) {
 
 function buildFallbackFeatures() {
   return {
-    hairColor: "castaño",
-    hairType: "ondulado",
-    skinTone: "medio",
-    eyeColor: "marrón",
+    hairColor: 'castaño',
+    hairType: 'ondulado',
+    skinTone: 'medio',
+    eyeColor: 'marrón',
     approximateAge: 6,
-    gender: "niño",
+    gender: 'niño',
     distinctiveFeatures: null,
-    faceShape: "ovalado",
+    faceShape: 'ovalado',
   };
+}
+
+function buildPreviewPayload(state: PreviewSessionState) {
+  const pages = state.pages.slice().sort((left, right) => left.pageNumber - right.pageNumber);
+  const cover = pages.find((page) => page.pageType === 'cover') ?? pages[0] ?? null;
+  const previewBundle = state.previewBundle ?? null;
+
+  return {
+    success: true,
+    status: state.status,
+    previewSessionId: state.previewSessionId,
+    progress: {
+      completedPages: state.completedPages,
+      totalPages: state.totalPages,
+    },
+    cover,
+    scenes: cover ? pages.filter((page) => page.sceneId !== cover.sceneId) : pages,
+    pages,
+    imageUrl: cover?.imageUrl ?? pages[0]?.imageUrl ?? null,
+    sceneText: cover?.text ?? '',
+    generation_mode: 'preview_dino_session',
+    image_provider: previewBundle?.provider ?? null,
+    image_model: previewBundle?.model ?? null,
+    preview_bundle: previewBundle,
+    errorMessage: state.errorMessage,
+    story: {
+      id: VALENTIN_DINO_BOOK.id,
+      slug: VALENTIN_DINO_BOOK.slug,
+      title: previewBundle?.childName ? getValentinDinoPersonalizedTitle(previewBundle.childName) : VALENTIN_DINO_BOOK.title,
+    },
+  };
+}
+
+async function hydratePreviewState(
+  previewSessionId: string,
+  options: { ensureRenderable?: boolean; advanceOnce?: boolean } = {},
+) {
+  const adminClient = createSupabaseAdminClient();
+  let state = await getValentinDinoPreviewSessionState(adminClient, previewSessionId);
+
+  if (options.ensureRenderable) {
+    while ((state.status === 'queued' || state.status === 'processing') && state.pages.length === 0) {
+      state = await processValentinDinoPreviewSessionStep(adminClient, previewSessionId);
+    }
+    return state;
+  }
+
+  if (options.advanceOnce && (state.status === 'queued' || state.status === 'processing')) {
+    state = await processValentinDinoPreviewSessionStep(adminClient, previewSessionId);
+  }
+
+  return state;
 }
 
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
-  const route = "/api/personalize";
-  let adminClient: ReturnType<typeof createSupabaseAdminClient> | null = null;
-  let previewUsageId: string | null = null;
+  const route = '/api/personalize';
 
   try {
     const limited = enforceRateLimit(request, { key: route, limit: 8, windowMs: 60_000 });
@@ -66,135 +146,110 @@ export async function POST(request: Request) {
     }
 
     const payload = PersonalizePayloadSchema.parse(await request.json());
-
-    if (payload.action === "analyze") {
-      const estimatedBytes = estimateBytesFromBase64(payload.imageBase64);
-      if (estimatedBytes > MAX_IMAGE_BYTES) {
-        const response = NextResponse.json(
-          {
-            error: "payload_too_large",
-            message: "La imagen excede el límite de 5MB",
-          },
-          { status: 413 },
-        );
-        return setRequestIdHeader(response, requestId);
-      }
-
-      const response = NextResponse.json({
-        success: true,
-        features: buildFallbackFeatures(),
-        analysis_mode: "safe_fallback",
-      });
-      return setRequestIdHeader(response, requestId);
-    }
-
-    const story = STORIES.find((item) => item.id === payload.bookId);
-    const fallbackImage = story?.coverImage ?? "/stories/space-1.jpg";
-    const childDescription = payload.childFeatures
-      ? JSON.stringify(payload.childFeatures).slice(0, 600)
-      : "rasgos infantiles naturales";
-
-    if (payload.imageBase64) {
-      const estimatedBytes = estimateBytesFromBase64(payload.imageBase64);
-      if (estimatedBytes > MAX_IMAGE_BYTES) {
-        const response = NextResponse.json(
-          {
-            error: "payload_too_large",
-            message: "La imagen excede el límite de 5MB",
-          },
-          { status: 413 },
-        );
-        return setRequestIdHeader(response, requestId);
-      }
-    }
-
-    const { user } = await requireAuthenticatedUser();
-    const previewAdminClient = createSupabaseAdminClient();
-    adminClient = previewAdminClient;
-    const previewReservation = await reservePreviewCredit(previewAdminClient, {
-      userId: user.id,
-      storyId: payload.bookId,
-      imageBase64: payload.imageBase64 ?? null,
-    });
-    previewUsageId = previewReservation.usageId;
-
-    const prompt = [
-      "Ilustración para portada de cuento infantil, cálida y premium.",
-      `Historia: ${story?.title ?? "Aventura personalizada"}.`,
-      `Estilo visual: ${PREVIEW_STYLE_BRAND}`,
-      `Rasgos del protagonista: ${childDescription}.`,
-      "Sin texto incrustado.",
-    ].join(" ");
-
-    const generated = await generateImageWithGemini({
-      prompt,
-      referenceImageBase64: payload.imageBase64 ?? null,
-    });
-
-    if (!generated.imageDataUrl) {
-      await finalizePreviewGeneration(previewAdminClient, {
-        usageId: previewUsageId,
-        status: "failed",
-        provider: generated.provider,
-        model: generated.model,
-        errorMessage: "Preview generation unavailable",
-      });
+    const estimatedBytes = estimateBytesFromBase64(payload.imageBase64);
+    if (estimatedBytes > MAX_IMAGE_BYTES) {
       const response = NextResponse.json(
         {
-          error: "preview_unavailable",
-          message: "No pudimos generar la vista previa en este momento.",
-          imageUrl: getEnv().NODE_ENV === "production" ? null : fallbackImage,
-          sceneText: "Intentá nuevamente en unos minutos.",
-          generation_mode: "preview_unavailable",
-          image_provider: generated.provider,
-          image_model: generated.model,
-          preview_credits_remaining: previewReservation.remainingCredits,
+          error: 'payload_too_large',
+          message: 'La imagen excede el límite de 5MB',
         },
-        { status: 503 },
+        { status: 413 },
       );
       return setRequestIdHeader(response, requestId);
     }
 
-    await finalizePreviewGeneration(previewAdminClient, {
-      usageId: previewUsageId,
-      status: "succeeded",
-      provider: generated.provider,
-      model: generated.model,
+    if (payload.action === 'analyze') {
+      const analyzed = await analyzeChildPhotoWithGemini(payload.imageBase64);
+      const response = NextResponse.json({
+        success: true,
+        features: {
+          ...buildFallbackFeatures(),
+          ...analyzed.features,
+        },
+        analysis_mode: analyzed.provider === 'gemini' ? 'gemini' : 'safe_fallback',
+        analysis_model: analyzed.model,
+      });
+      return setRequestIdHeader(response, requestId);
+    }
+
+    if (payload.bookId !== VALENTIN_DINO_STORY_ID) {
+      const response = NextResponse.json(
+        {
+          error: 'unsupported_story',
+          message: 'La personalización activa está disponible solo para Valentín y la noche de los dinosaurios.',
+        },
+        { status: 400 },
+      );
+      return setRequestIdHeader(response, requestId);
+    }
+
+    const childName = payload.childName?.trim() || 'Valentín';
+    const childFeatures = payload.childFeatures ?? buildFallbackFeatures();
+    const adminClient = createSupabaseAdminClient();
+    const session = await createValentinDinoPreviewSession({
+      adminClient,
+      childName,
+      childFeatures,
+      childPhotoDataUrl: payload.imageBase64,
     });
 
-    const watermarkedPreview = addPreviewWatermark(generated.imageDataUrl);
+    // Best-effort consent persistence (see lib/privacy/consent.ts). We
+    // already enforced the payload schema above, so reaching this point
+    // means the uploader explicitly accepted the current consent version.
+    await recordChildPhotoConsent({
+      adminClient,
+      previewSessionId: session.previewSessionId,
+      childName,
+      consent: payload.consent,
+      request,
+      photo: null,
+    });
 
-    logEvent("info", "preview_generated", { request_id: requestId, route }, {
+    const previewState = session;
+    const response = NextResponse.json(buildPreviewPayload(previewState));
+
+    logEvent('info', 'preview_generated', { request_id: requestId, route }, {
       book_id: payload.bookId,
-      user_id: user.id,
-      image_provider: generated.provider,
-      image_model: generated.model,
+      image_provider: previewState.previewBundle?.provider ?? 'fallback',
+      image_model: previewState.previewBundle?.model ?? 'unavailable',
+      preview_session_id: previewState.previewSessionId,
+      preview_status: previewState.status,
+      ready_pages: previewState.completedPages,
+      total_pages: previewState.totalPages,
     });
 
-    const response = NextResponse.json({
-      success: true,
-      imageUrl: watermarkedPreview,
-      sceneText: "Vista previa generada con marca de agua. La versión final en alta calidad se procesa tras el pago.",
-      generation_mode: generated.provider === "gemini" ? "preview_gemini" : "preview_fallback",
-      image_provider: generated.provider,
-      image_model: generated.model,
-      preview_credits_remaining: previewReservation.remainingCredits,
-    });
     return setRequestIdHeader(response, requestId);
   } catch (error) {
-    if (previewUsageId && adminClient) {
-      try {
-        await finalizePreviewGeneration(adminClient, {
-          usageId: previewUsageId,
-          status: "failed",
-          errorMessage: error instanceof Error ? error.message : "Unexpected error",
-        });
-      } catch {
-        // Do not mask the main response if usage logging fails.
-      }
-    }
-    logEvent("error", "preview_generation.failed", { request_id: requestId, route }, {
-      message: error instanceof Error ? error.message : "Unexpected error",
+    logEvent('error', 'preview_generation.failed', { request_id: requestId, route }, {
+      message: error instanceof Error ? error.message : 'Unexpected error',
+    });
+    const response = handleRouteError(error);
+    return setRequestIdHeader(response, requestId);
+  }
+}
+
+export async function GET(request: Request) {
+  const requestId = getRequestId(request);
+  const route = '/api/personalize';
+
+  try {
+    const query = PreviewSessionQuerySchema.parse(
+      Object.fromEntries(new URL(request.url).searchParams.entries()),
+    );
+    const previewState = await hydratePreviewState(query.previewSessionId, { advanceOnce: true });
+    const response = NextResponse.json(buildPreviewPayload(previewState));
+
+    logEvent('info', 'preview_polled', { request_id: requestId, route }, {
+      preview_session_id: previewState.previewSessionId,
+      preview_status: previewState.status,
+      ready_pages: previewState.completedPages,
+      total_pages: previewState.totalPages,
+    });
+
+    return setRequestIdHeader(response, requestId);
+  } catch (error) {
+    logEvent('error', 'preview_poll.failed', { request_id: requestId, route }, {
+      message: error instanceof Error ? error.message : 'Unexpected error',
     });
     const response = handleRouteError(error);
     return setRequestIdHeader(response, requestId);

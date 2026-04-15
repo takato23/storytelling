@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { handleRouteError } from "@/lib/api";
 import { ApiError, requireAuthenticatedUser } from "@/lib/auth";
-import { getImageDataUrlMetadata } from "@/lib/image-data-url";
 import { getPrintProduct } from "@/lib/print-products";
+import { parseStorageUri } from "@/lib/storage";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 import { buildStoredZip } from "@/lib/zip";
 
@@ -18,7 +18,30 @@ async function isAdmin(adminClient: ReturnType<typeof createSupabaseAdminClient>
 function getExtension(mimeType: string) {
   if (mimeType === "image/png") return "png";
   if (mimeType === "image/jpeg") return "jpg";
+  if (mimeType === "image/webp") return "webp";
   return "bin";
+}
+
+async function loadImageBytes(
+  adminClient: ReturnType<typeof createSupabaseAdminClient>,
+  imageUrl: string,
+) {
+  const storageRef = parseStorageUri(imageUrl);
+  if (storageRef) {
+    const { data, error } = await adminClient.storage.from(storageRef.bucket).download(storageRef.objectPath);
+    if (error || !data) {
+      throw new Error(error?.message ?? `Unable to download ${imageUrl}`);
+    }
+    const bytes = Buffer.from(await data.arrayBuffer());
+    return {
+      bytes,
+      mimeType: data.type || "image/jpeg",
+    };
+  }
+
+  throw new Error(
+    `Image URL must use storage:// scheme. Got: ${imageUrl.slice(0, 80)}`
+  );
 }
 
 export async function GET(_request: Request, context: RouteContext) {
@@ -73,7 +96,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
     for (const page of pages ?? []) {
       if (!page.image_url) continue;
-      const metadata = getImageDataUrlMetadata(String(page.image_url));
+      const metadata = await loadImageBytes(adminClient, String(page.image_url));
       const extension = getExtension(metadata.mimeType);
       files.push({
         name: `pages/page-${String(page.page_number).padStart(2, "0")}.${extension}`,

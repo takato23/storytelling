@@ -46,10 +46,10 @@ export function FinalCTA({
                 </svg>
             </div>
 
-            <div className="absolute inset-0 bg-gradient-to-br from-[#3d2644] via-[#5a385e] to-[#355a64]" />
+            <div className="absolute inset-0 bg-gradient-to-br from-[var(--button-primary-bg)] via-[#5a385e] to-[#355a64]" />
 
-            <div className="absolute top-0 left-0 w-[520px] md:w-[800px] h-[520px] md:h-[800px] bg-coral-500/20 rounded-full blur-[120px] opacity-60 mix-blend-screen animate-pulse" />
-            <div className="absolute bottom-0 right-0 w-[520px] md:w-[800px] h-[520px] md:h-[800px] bg-purple-500/20 rounded-full blur-[120px] opacity-60 mix-blend-screen" />
+            <div className="absolute top-0 left-0 w-[520px] md:w-[800px] h-[520px] md:h-[800px] bg-[var(--page-orb-a)] rounded-full blur-[120px] opacity-80 mix-blend-screen animate-pulse" />
+            <div className="absolute bottom-0 right-0 w-[520px] md:w-[800px] h-[520px] md:h-[800px] bg-[var(--page-orb-c)] rounded-full blur-[120px] opacity-80 mix-blend-screen" />
 
             {isMounted && !compactMotion && FLOATING_STARS.map((star, i) => (
                 <motion.div
@@ -70,7 +70,7 @@ export function FinalCTA({
                         delay: star.delay,
                     }}
                 >
-                    <Star className="w-3 h-3 md:w-5 md:h-5 text-yellow-200 fill-white" />
+                    <Star className="w-3 h-3 md:w-5 md:h-5 text-[var(--play-secondary-container)] fill-white" />
                 </motion.div>
             ))}
 
@@ -92,10 +92,10 @@ export function FinalCTA({
 
                         <h2 className="mb-8 text-balance font-serif text-5xl leading-tight text-white drop-shadow-xl md:text-6xl lg:text-7xl">
                             Creá un cuento que{" "}
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-amber-500">sí se guarda</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--play-secondary-container)] to-[var(--play-secondary-strong)]">sí se guarda</span>
                         </h2>
 
-                        <p className="mx-auto mb-12 max-w-3xl text-xl font-medium leading-relaxed text-indigo-100 md:text-2xl">
+                        <p className="mx-auto mb-12 max-w-3xl text-xl font-medium leading-relaxed text-white/80 md:text-2xl">
                             Subí una foto, validá la portada y elegí el formato.
                         </p>
                     </motion.div>
@@ -109,10 +109,10 @@ export function FinalCTA({
                     >
                         <Link href="/crear" onClick={onPrimaryClick}>
                             <motion.button
-                                className="group flex items-center gap-3 rounded-[24px] bg-white px-12 py-6 text-xl font-bold text-purple-700 shadow-[0_20px_50px_-10px_rgba(255,255,255,0.3)] transition-all hover:scale-105 hover:shadow-white/50"
+                                className="group flex items-center gap-3 rounded-[24px] bg-white px-12 py-6 text-xl font-bold text-[var(--button-primary-bg)] shadow-[0_20px_50px_-10px_rgba(255,255,255,0.3)] transition-all hover:scale-105 hover:shadow-white/50"
                                 whileTap={{ scale: 0.95 }}
                             >
-                                <Sparkles className="w-5 h-5 text-purple-600" />
+                                <Sparkles className="w-5 h-5 text-[var(--button-primary-bg)]" />
                                 Crear mi cuento
                                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                             </motion.button>

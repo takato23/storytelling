@@ -38,20 +38,20 @@ export const STICKER_STYLE_PRESETS: Record<
   cuento_vibrante: {
     label: "Cuento vibrante",
     description: "Tipo libro infantil, suave y colorido.",
-    promptStyle: "ilustración infantil editorial, trazos limpios, volumen suave",
-    promptPalette: "colores cálidos y saturación media-alta",
+    promptStyle: "children's book editorial illustration, clean strokes, soft volume",
+    promptPalette: "warm colors with medium-high saturation",
   },
   kawaii_limpio: {
     label: "Kawaii limpio",
     description: "Rostro tierno, líneas simples y fondo limpio.",
-    promptStyle: "estilo kawaii premium, contornos definidos, proporciones simpáticas",
-    promptPalette: "pasteles suaves con acentos vivos",
+    promptStyle: "premium kawaii style, defined outlines, cute proportions",
+    promptPalette: "soft pastels with vivid accents",
   },
   comic_pop: {
     label: "Comic pop",
     description: "Más energía y contraste, tipo cómic moderno.",
-    promptStyle: "comic pop contemporáneo, líneas dinámicas, poses expresivas",
-    promptPalette: "alto contraste con bloques de color intensos",
+    promptStyle: "contemporary pop comic, dynamic lines, expressive poses",
+    promptPalette: "high contrast with bold color blocks",
   },
 };
 
@@ -78,18 +78,26 @@ export function buildStickerPrompt(params: {
   const style = STICKER_STYLE_PRESETS[params.styleId] ?? STICKER_STYLE_PRESETS[DEFAULT_STICKER_STYLE_ID];
   const themes = normalizeStickerThemes(params.childGender, params.themes).join(", ");
 
+  const genderWord = params.childGender === "niña" ? "girl" : "boy";
+
   return [
-    "Diseña una plancha de stickers infantiles premium con exactamente 6 stickers troquelables.",
-    "Cada sticker debe mostrar al mismo niño/niña de la foto de referencia en distintos roles.",
-    `Género objetivo: ${params.childGender}.`,
-    `Temáticas solicitadas: ${themes}.`,
-    `Estilo visual: ${style.promptStyle}.`,
-    `Paleta: ${style.promptPalette}.`,
-    "Reglas de identidad estricta: conservar forma de cara, ojos, nariz, boca, tono de piel y peinado del niño/niña.",
-    "No deformar rasgos faciales, no cambiar edad aparente, no caricaturizar excesivamente la cara.",
-    "Anatomía limpia: manos correctas, sin dedos extra, sin miembros duplicados.",
-    "Composición de plancha: 6 figuras separadas, recorte claro por sticker, buena legibilidad para impresión.",
-    "No agregar texto, logos ni marcas de agua.",
-    "Fondo blanco limpio con sombras suaves mínimas.",
-  ].join(" ");
+    `Image 1 is a real photo of a ${genderWord}. Transform the child from the uploaded photo into a ${style.promptStyle} illustration and create exactly 6 die-cut sticker poses on a single sheet.`,
+    `Each sticker must depict the same child in a different role/theme: ${themes}.`,
+    `Color palette: ${style.promptPalette}.`,
+    "",
+    "STRICT IDENTITY PRESERVATION:",
+    "- Lock onto the child's exact face shape, eye shape and color, nose, mouth, skin tone, and hairstyle from the uploaded photo.",
+    "- Do NOT age, slim, or exaggerate facial features. The child must be immediately recognizable.",
+    "- Keep the same apparent age as in the photo.",
+    "",
+    "ANATOMY RULES:",
+    "- Correct hands with five fingers each, no extra or missing fingers.",
+    "- No duplicated or malformed limbs.",
+    "",
+    "COMPOSITION RULES:",
+    "- 6 separated figures arranged in a 3x2 or 2x3 grid layout.",
+    "- Each sticker has a clear die-cut outline, suitable for print.",
+    "- Clean white background with minimal soft drop shadows.",
+    "- Do NOT add any text, logos, labels, or watermarks anywhere on the sheet.",
+  ].join("\n");
 }

@@ -3,12 +3,20 @@ import { z } from "zod";
 import { getEnv, getGeminiConfig } from "@/lib/config";
 import { GEMINI_CONFIG } from "@/lib/gemini-config";
 import { buildPersonalizedStory } from "@/lib/digital-story";
+import {
+  parseRetryDelayMs,
+  isQuotaZeroError,
+  isRateLimitError,
+  MAX_RETRIES,
+} from "@/lib/gemini-retry";
+import { recordGeminiCall } from "@/lib/gemini-quota";
 
 export interface StoryPage {
   pageNumber: number;
   title: string;
   text: string;
   imageUrl?: string | null;
+  layoutVariant?: "standard" | "image_only" | "text_on_image" | "cover" | "back_cover";
 }
 
 interface GenerateStoryInput {
@@ -21,6 +29,7 @@ interface GenerateStoryInput {
 interface GenerateStoryResult {
   pages: StoryPage[];
   provider: "gemini" | "fallback";
+  errorMessage?: string;
 }
 
 const PageSchema = z.object({
@@ -32,6 +41,8 @@ const PageSchema = z.object({
 const ResponseSchema = z.object({
   pages: z.array(PageSchema).length(5),
 });
+
+const BASE_STORY_RETRY_DELAY_MS = 5_000;
 
 function getApiKey() {
   return getGeminiConfig().apiKey;
@@ -82,36 +93,63 @@ export async function generateStoryPages(input: GenerateStoryInput): Promise<Gen
   const apiKey = getApiKey();
 
   if (!apiKey) {
-    return { pages: fallbackPages, provider: "fallback" };
+    console.warn("[generateStoryPages] No Gemini API key configured, using fallback story");
+    recordGeminiCall("text", "fallback");
+    return { pages: fallbackPages, provider: "fallback", errorMessage: "No Gemini API key configured" };
   }
 
-  try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: getEnv().GEMINI_TEXT_MODEL || GEMINI_CONFIG.models.text,
-    });
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: getEnv().GEMINI_TEXT_MODEL || GEMINI_CONFIG.models.text,
+  });
+  const prompt = getPrompt(input);
 
-    const prompt = getPrompt(input);
-    const result = await model.generateContent(prompt);
-    const rawText = result.response.text();
-    const jsonBlock = extractJsonBlock(rawText);
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`[generateStoryPages] Retry attempt ${attempt}/${MAX_RETRIES}...`);
+      }
 
-    if (!jsonBlock) {
-      return { pages: fallbackPages, provider: "fallback" };
+      const result = await model.generateContent(prompt);
+      const rawText = result.response.text();
+      const jsonBlock = extractJsonBlock(rawText);
+
+      if (!jsonBlock) {
+        console.warn("[generateStoryPages] Gemini returned no parseable JSON block, using fallback");
+        recordGeminiCall("text", "fallback");
+        return { pages: fallbackPages, provider: "fallback", errorMessage: "Gemini returned no parseable JSON block" };
+      }
+
+      const parsed = ResponseSchema.parse(JSON.parse(jsonBlock));
+      const normalized = normalizePages(parsed.pages);
+
+      if (normalized.length !== 5) {
+        console.warn(`[generateStoryPages] Gemini returned ${normalized.length} pages instead of 5, using fallback`);
+        recordGeminiCall("text", "fallback");
+        return { pages: fallbackPages, provider: "fallback", errorMessage: `Gemini returned ${normalized.length} pages instead of 5` };
+      }
+
+      recordGeminiCall("text", "success");
+      return { pages: normalized, provider: "gemini" };
+    } catch (error) {
+      const isRateLimit = isRateLimitError(error);
+      const isPermanent = isQuotaZeroError(error);
+
+      if (isRateLimit && !isPermanent && attempt < MAX_RETRIES) {
+        recordGeminiCall("text", "rate_limit");
+        const hintMs = parseRetryDelayMs(error);
+        const delayMs = hintMs ?? BASE_STORY_RETRY_DELAY_MS * (attempt + 1);
+        console.warn(`[generateStoryPages] Rate limited, attempt ${attempt + 1}/${MAX_RETRIES + 1}. Waiting ${Math.round(delayMs / 1000)}s...`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        continue;
+      }
+
+      recordGeminiCall("text", isPermanent ? "quota_error" : "error");
+      const errorMsg = error instanceof Error ? error.message.slice(0, 400) : String(error);
+      console.error("[generateStoryPages] ERROR:", errorMsg);
+      return { pages: fallbackPages, provider: "fallback", errorMessage: errorMsg };
     }
-
-    const parsed = ResponseSchema.parse(JSON.parse(jsonBlock));
-    const normalized = normalizePages(parsed.pages);
-
-    if (normalized.length !== 5) {
-      return { pages: fallbackPages, provider: "fallback" };
-    }
-
-    return {
-      pages: normalized,
-      provider: "gemini",
-    };
-  } catch {
-    return { pages: fallbackPages, provider: "fallback" };
   }
+
+  return { pages: fallbackPages, provider: "fallback", errorMessage: "Story generation exhausted retries" };
 }

@@ -19,7 +19,7 @@ export function TheMagicSection({ className = "" }: { className?: string }) {
         {
             icon: Book,
             title: "Encuadernación",
-            description: "Tapa dura o blanda, según la edición."
+            description: "Formato 21 x 21 cm en tapa dura o blanda."
         },
         {
             icon: Leaf,

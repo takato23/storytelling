@@ -1,15 +1,63 @@
+/**
+ * Public image-generation façade.
+ *
+ * Historically this file talked directly to Gemini. As of April 2026 the
+ * actual generation is delegated to the provider router in
+ * `lib/image-providers/` so the same call-sites work with Gemini, Flux
+ * Kontext (fal.ai), Seedream (fal.ai), etc.
+ *
+ * The exported `generateImageWithGemini` name is preserved as a thin
+ * backward-compat wrapper so existing call-sites continue to work. New
+ * code should prefer `generateImage()` from `@/lib/image-providers`.
+ *
+ * The secondary helpers `analyzeChildPhotoWithGemini` and
+ * `evaluateStickerPreviewQuality` remain Gemini-backed: feature extraction
+ * and visual QA keep working even when the chosen image provider changes.
+ */
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getGeminiConfig } from "@/lib/config";
+import { normalizeImageDataUrlForGemini } from "@/lib/image-normalize";
+import { generateImage as routeGenerateImage } from "@/lib/image-providers";
+import type {
+  GenerateImageInput as RouterInput,
+  GenerateImageResult as RouterResult,
+  ImageProviderName,
+} from "@/lib/image-providers/types";
 
 interface GenerateImageInput {
   prompt: string;
   referenceImageBase64?: string | null;
+  referenceImageBase64s?: string[];
+  modelOverride?: string;
+  aspectRatio?: string;
+  imageSize?: "1K" | "2K" | "4K";
+  maxRetries?: number;
+  edgeTimeoutMs?: number;
+  /** Force a specific provider, bypassing env routing. */
+  providerOverride?: ImageProviderName;
+  /** Disable the fallback chain for this single call. */
+  disableFallback?: boolean;
 }
 
 interface GenerateImageResult {
   imageDataUrl: string | null;
-  provider: "gemini" | "fallback";
+  provider: RouterResult["provider"];
   model: string;
+  errorMessage?: string | null;
+  /** Total wall-clock latency in ms (set by the router). */
+  latencyMs?: number;
+}
+
+export interface ChildPhotoAnalysisResult {
+  approximateAge?: number;
+  gender?: "niño" | "niña" | "neutral";
+  hairColor?: string;
+  hairType?: string;
+  skinTone?: string;
+  eyeColor?: string;
+  distinctiveFeatures?: string | null;
+  faceShape?: string;
 }
 
 interface StickerPreviewQualityInput {
@@ -38,51 +86,24 @@ function stripBase64Prefix(value: string) {
   return value.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, "");
 }
 
-function getImageModel() {
-  return getGeminiConfig().imageModel;
-}
-
 function getQualityModel() {
   return getGeminiConfig().qualityModel;
 }
 
-function extractInlineImageData(candidates: Array<unknown> | undefined) {
-  if (!Array.isArray(candidates)) return null;
-
-  for (const candidate of candidates) {
-    const parts = (candidate as { content?: { parts?: Array<{ inlineData?: { data?: string; mimeType?: string } }> } })
-      ?.content?.parts;
-
-    if (!Array.isArray(parts)) continue;
-    for (const part of parts) {
-      if (part?.inlineData?.data) {
-        return {
-          data: part.inlineData.data,
-          mimeType: part.inlineData.mimeType || "image/png",
-        };
-      }
-    }
-  }
-
-  return null;
+function getTextModel() {
+  return getGeminiConfig().qualityModel;
 }
 
 function extractTextFromCandidates(candidates: Array<unknown> | undefined): string | null {
   if (!Array.isArray(candidates)) return null;
-
   for (const candidate of candidates) {
     const parts = (candidate as { content?: { parts?: Array<{ text?: string }> } })?.content?.parts;
     if (!Array.isArray(parts)) continue;
-
     const textParts = parts
       .map((part) => (typeof part?.text === "string" ? part.text : ""))
       .filter((value) => value.length > 0);
-
-    if (textParts.length > 0) {
-      return textParts.join("\n").trim();
-    }
+    if (textParts.length > 0) return textParts.join("\n").trim();
   }
-
   return null;
 }
 
@@ -93,7 +114,6 @@ function parseJsonFromText(rawText: string): Record<string, unknown> | null {
     .replace(/^```\s*/i, "")
     .replace(/```$/i, "")
     .trim();
-
   try {
     return JSON.parse(cleaned) as Record<string, unknown>;
   } catch {
@@ -132,13 +152,50 @@ function toImagePart(base64: string) {
   };
 }
 
+/**
+ * Historical entrypoint. Despite the name, this now routes to whatever
+ * image provider is configured via `IMAGE_PROVIDER` — Gemini only when
+ * explicitly selected (or as a fallback).
+ */
 export async function generateImageWithGemini(input: GenerateImageInput): Promise<GenerateImageResult> {
+  const references = [
+    ...(input.referenceImageBase64 ? [input.referenceImageBase64] : []),
+    ...(input.referenceImageBase64s ?? []),
+  ].filter((value, index, array) => Boolean(value) && array.indexOf(value) === index);
+
+  const routerInput: RouterInput = {
+    prompt: input.prompt,
+    references,
+    aspectRatio: input.aspectRatio,
+    imageSize: input.imageSize,
+    modelOverride: input.modelOverride,
+    maxRetries: input.maxRetries,
+    timeoutMs: input.edgeTimeoutMs,
+  };
+
+  const result = await routeGenerateImage(routerInput, {
+    provider: input.providerOverride,
+    disableFallback: input.disableFallback,
+  });
+
+  return {
+    imageDataUrl: result.imageDataUrl,
+    provider: result.provider,
+    model: result.model,
+    errorMessage: result.errorMessage ?? null,
+    latencyMs: result.latencyMs,
+  };
+}
+
+export async function analyzeChildPhotoWithGemini(
+  imageBase64: string,
+): Promise<{ features: ChildPhotoAnalysisResult; provider: "gemini" | "fallback"; model: string }> {
   const apiKey = getApiKey();
-  const model = getImageModel();
+  const model = getTextModel();
 
   if (!apiKey) {
     return {
-      imageDataUrl: null,
+      features: {},
       provider: "fallback",
       model,
     };
@@ -147,40 +204,49 @@ export async function generateImageWithGemini(input: GenerateImageInput): Promis
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
     const genModel = genAI.getGenerativeModel({ model });
+    const prompt = [
+      "Analiza la foto de un niño o niña y responde SOLO en JSON.",
+      "No inventes datos que no se puedan inferir visualmente.",
+      "Usa este esquema exacto:",
+      '{"approximateAge": number, "gender": "niño" | "niña" | "neutral", "hairColor": string, "hairType": string, "skinTone": string, "eyeColor": string, "distinctiveFeatures": string | null, "faceShape": string}',
+    ].join("\n");
 
-    const content: Array<string | { inlineData: { data: string; mimeType: string } }> = [input.prompt];
+    const normalizedImage = await normalizeImageDataUrlForGemini(imageBase64, { maxDimension: 1280 });
+    const result = await genModel.generateContent([prompt, toImagePart(normalizedImage)] as never);
+    const rawText = extractTextFromCandidates(result.response.candidates as Array<unknown> | undefined);
+    const parsed = rawText ? parseJsonFromText(rawText) : null;
 
-    if (input.referenceImageBase64) {
-      content.push({
-        inlineData: {
-          data: stripBase64Prefix(input.referenceImageBase64),
-          mimeType: "image/jpeg",
-        },
-      });
-    }
-
-    const result = await genModel.generateContent(content as never);
-    const image = extractInlineImageData(result.response.candidates as Array<unknown> | undefined);
-
-    if (!image?.data) {
-      return {
-        imageDataUrl: null,
-        provider: "fallback",
-        model,
-      };
+    if (!parsed) {
+      return { features: {}, provider: "fallback", model };
     }
 
     return {
-      imageDataUrl: `data:${image.mimeType};base64,${image.data}`,
+      features: {
+        approximateAge:
+          typeof parsed.approximateAge === "number"
+            ? Math.max(2, Math.min(12, Math.round(parsed.approximateAge)))
+            : undefined,
+        gender:
+          parsed.gender === "niño" || parsed.gender === "niña" || parsed.gender === "neutral"
+            ? parsed.gender
+            : undefined,
+        hairColor: typeof parsed.hairColor === "string" ? parsed.hairColor.trim() : undefined,
+        hairType: typeof parsed.hairType === "string" ? parsed.hairType.trim() : undefined,
+        skinTone: typeof parsed.skinTone === "string" ? parsed.skinTone.trim() : undefined,
+        eyeColor: typeof parsed.eyeColor === "string" ? parsed.eyeColor.trim() : undefined,
+        distinctiveFeatures:
+          typeof parsed.distinctiveFeatures === "string"
+            ? parsed.distinctiveFeatures.trim()
+            : parsed.distinctiveFeatures === null
+              ? null
+              : undefined,
+        faceShape: typeof parsed.faceShape === "string" ? parsed.faceShape.trim() : undefined,
+      },
       provider: "gemini",
       model,
     };
   } catch {
-    return {
-      imageDataUrl: null,
-      provider: "fallback",
-      model,
-    };
+    return { features: {}, provider: "fallback", model };
   }
 }
 

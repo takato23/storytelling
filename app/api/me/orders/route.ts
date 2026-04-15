@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { handleRouteError } from "@/lib/api";
 import { requireAuthenticatedUser } from "@/lib/auth";
+import { resolveStorageUrlForClient } from "@/lib/storage";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 
 export async function GET() {
@@ -83,6 +84,7 @@ export async function GET() {
         pdf: new Map<string, string | null>(),
         viewer: new Map<string, string | null>(),
         thumbnail: new Map<string, string | null>(),
+        previewLowres: new Map<string, string | null>(),
         printPdf: new Map<string, string | null>(),
         printZip: new Map<string, string | null>(),
       };
@@ -91,6 +93,7 @@ export async function GET() {
         digital_pdf: assetMaps.pdf,
         viewer: assetMaps.viewer,
         thumbnail: assetMaps.thumbnail,
+        preview_lowres: assetMaps.previewLowres,
         print_pdf: assetMaps.printPdf,
         print_zip: assetMaps.printZip,
       };
@@ -107,10 +110,12 @@ export async function GET() {
         }
       }
 
-      bookOrders = orders.map((order) => {
+      bookOrders = await Promise.all(orders.map(async (order) => {
         const orderId = String(order.id);
         const item = itemByOrderId.get(orderId);
         const story = item ? storyById.get(item.story_id) : null;
+        const thumbnailUrl = await resolveStorageUrlForClient(adminClient, assetMaps.thumbnail.get(orderId) ?? null);
+        const previewLowresUrl = await resolveStorageUrlForClient(adminClient, assetMaps.previewLowres.get(orderId) ?? null);
 
         return {
           id: orderId,
@@ -121,13 +126,16 @@ export async function GET() {
           currency: String(order.currency),
           createdAt: String(order.created_at),
           title: story?.title ? String(story.title) : "Cuento personalizado",
-          coverImage: assetMaps.thumbnail.get(orderId) ?? (story?.cover_image ? String(story.cover_image) : null),
+          coverImage:
+            thumbnailUrl ??
+            previewLowresUrl ??
+            (story?.cover_image ? String(story.cover_image) : null),
           pdfUrl: assetMaps.pdf.get(orderId) ?? null,
           viewerUrl: assetMaps.viewer.get(orderId) ?? null,
           printPdfUrl: assetMaps.printPdf.get(orderId) ?? null,
           printZipUrl: assetMaps.printZip.get(orderId) ?? null,
         };
-      });
+      }));
     }
 
     /* ------------------------------------------------------------------ */

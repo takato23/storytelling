@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { handleRouteError } from "@/lib/api";
 import { ApiError } from "@/lib/auth";
+import { getCheckoutAvailability } from "@/lib/checkout-status";
 import { getBaseUrl } from "@/lib/config";
 import {
   createMercadoPagoPreferenceGeneric,
@@ -54,6 +55,20 @@ export async function POST(request: Request) {
     const limited = enforceRateLimit(request, { key: route, limit: 6, windowMs: 60_000 });
     if (limited) {
       return setRequestIdHeader(limited, requestId);
+    }
+
+    const checkoutAvailability = getCheckoutAvailability();
+    if (!checkoutAvailability.enabled) {
+      const response = NextResponse.json(
+        {
+          error: "checkout_unavailable",
+          message: checkoutAvailability.message,
+          provider: checkoutAvailability.provider,
+          reason: checkoutAvailability.reason,
+        },
+        { status: 503 },
+      );
+      return setRequestIdHeader(response, requestId);
     }
 
     const payload = StickerCheckoutPayloadSchema.parse(await request.json());

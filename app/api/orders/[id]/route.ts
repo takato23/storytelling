@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { handleRouteError } from "@/lib/api";
 import { ApiError, requireAuthenticatedUser } from "@/lib/auth";
+import { resolveStorageUrlForClient } from "@/lib/storage";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 
 type RouteContext = {
@@ -86,15 +87,29 @@ export async function GET(_request: Request, context: RouteContext) {
       );
     }
 
+    const resolvedAssets = await Promise.all(
+      (assets ?? []).map(async (asset) => ({
+        ...asset,
+        url: await resolveStorageUrlForClient(adminClient, asset.url ? String(asset.url) : null),
+      })),
+    );
+
+    const resolvedGeneratedPages = await Promise.all(
+      (generatedPages ?? []).map(async (page) => ({
+        ...page,
+        image_url: await resolveStorageUrlForClient(adminClient, page.image_url ? String(page.image_url) : null),
+      })),
+    );
+
     return NextResponse.json({
       order,
       items: items ?? [],
       personalization: personalization ?? null,
       payments: payments ?? [],
       events: events ?? [],
-      digital_assets: assets ?? [],
+      digital_assets: resolvedAssets,
       generation_jobs: generationJobs ?? [],
-      generated_pages: generatedPages ?? [],
+      generated_pages: resolvedGeneratedPages,
       print_job: printJob ?? null,
       shipping_address: shipping ?? null,
     });

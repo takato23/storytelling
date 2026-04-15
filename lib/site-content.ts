@@ -99,8 +99,8 @@ export const siteContent = {
     ],
   },
   home: {
-    featuredStoryIds: ["1", "2", "3"],
-    libraryStoryIds: ["2", "3", "4", "5"],
+    featuredStoryIds: ["3"],
+    libraryStoryIds: ["3"],
     hero: {
       kicker: "Cuentos personalizados",
       title: "Un cuento donde tu hijo es el protagonista.",
@@ -197,15 +197,15 @@ export const siteContent = {
     kicker: "Colección completa",
     title: "Nuestros libros para personalizar",
     copy:
-      "Estos cuentos funcionan hoy como ejemplos comerciales del tipo de aventura que se puede personalizar. El catálogo final todavía puede cambiar.",
+      "Hoy el pipeline productivo está cerrado sobre un libro real y aprobado, listo para demo comercial y personalización end-to-end.",
     mockNote:
-      "Los universos, portadas y textos actuales sirven como ejemplo vendible mientras se define el catálogo final con la clienta.",
+      "El libro de dinosaurios es el flujo activo y listo para demo. El resto del catálogo queda fuera del alcance comercial inmediato.",
   },
   storySelection: {
     eyebrow: "Paso 3 de 4",
     title: "Elegí la aventura perfecta",
-    copy: "Cada cuento funciona hoy como universo comercial de referencia para personalizar.",
-    mockNote: "Catálogo ejemplo en validación comercial.",
+    copy: "Este demo comercial usa el cuento aprobado por la clienta y ya integrado para personalización real.",
+    mockNote: "Pipeline productivo activo.",
   },
   preview: {
     eyebrow: "Paso final",
@@ -215,7 +215,7 @@ export const siteContent = {
     digitalCardTitle: "Versión digital",
     digitalCardCopy:
       "Incluye PDF descargable y lectura web. La entrega final se libera cuando el pedido queda listo.",
-    sampleNote: "La vista previa es una muestra comercial del resultado; no representa todavía el libro final completo.",
+    sampleNote: "La vista previa muestra portada y escenas reales del cuento personalizado antes del checkout.",
     checkoutCtaPrint: "Pagar con Mercado Pago",
     checkoutCtaDigital: "Pagar con Mercado Pago",
   },
@@ -226,7 +226,7 @@ export const siteContent = {
     printLabel: "Libro físico",
     ctaLabel: "Comenzar personalización",
     mockNote:
-      "Esta ficha muestra un universo comercial de referencia. El catálogo y la muestra final todavía pueden ajustarse con la clienta.",
+      "Esta ficha corresponde al libro activo para demo comercial y deploy.",
     crossSellTitle: "Más historias para descubrir",
     crossSellCopy: "Aventuras personalizadas de referencia para distintas edades.",
   },
@@ -250,7 +250,7 @@ export const storyMocks: StoryMockContent[] = [
     printPriceArs: 29990,
     printSpecs: {
       format: "Tapa blanda",
-      size: "21 x 14 cm",
+      size: "21 x 21 cm",
       pages: 32,
       paper: "Satinado color",
     },
@@ -293,7 +293,7 @@ export const storyMocks: StoryMockContent[] = [
     formatAvailability: ["digital", "print"],
     ctaMode: "direct_personalization",
     purchaseNote: "Universo comercial de referencia para personalizar.",
-    previewPromise: "Muestra previa del estilo y la portada antes de pagar.",
+    previewPromise: "Mira portada + escenas reales personalizadas antes de avanzar al checkout.",
   },
   {
     id: "2",
@@ -312,7 +312,7 @@ export const storyMocks: StoryMockContent[] = [
     printPriceArs: 29990,
     printSpecs: {
       format: "Tapa blanda",
-      size: "21 x 14 cm",
+      size: "21 x 21 cm",
       pages: 32,
       paper: "Satinado color",
     },
@@ -359,50 +359,54 @@ export const storyMocks: StoryMockContent[] = [
   },
   {
     id: "3",
-    slug: "el-domador-de-dinosaurios",
-    title: "El Domador de Dinosaurios",
-    shortDescription: "Una aventura prehistórica con amigos gigantes.",
+    slug: "valentin-y-la-noche-de-los-dinosaurios",
+    title: "Valentín y la noche de los dinosaurios",
+    shortDescription: "Un cuento tierno para acompañar el miedo a dormir solo.",
     fullDescription:
-      "¡ROAAAAR! Viaja millones de años al pasado y conoce a los dinosaurios más divertidos. Tu pequeño aprenderá que incluso los gigantes T-Rex pueden necesitar un abrazo. Una historia llena de risas, aventuras y lecciones sobre la empatía y la convivencia.",
-    coverColor: "#DC2626",
-    style: "cartoon",
-    ages: "4-8 años",
-    pages: 22,
+      "A veces, cuando llega la noche, todo se siente más silencioso y un poquito más difícil. Valentín también sentía miedo. Pero una noche, junto a su amigo Dino, descubrió algo muy importante: que ser valiente no es no tener miedo, sino animarse incluso cuando el miedo está. Un cuento tierno y acompañante para ayudar a los más chicos a dormir tranquilos y confiar en sí mismos.",
+    coverColor: "#6F4E37",
+    style: "animación 3D cálida",
+    ages: "3-6 años",
+    pages: 20,
     price: 29.99,
     targetGender: "niño",
     digitalPriceArs: 9990,
     printPriceArs: 29990,
     printSpecs: {
-      format: "Tapa blanda",
-      size: "21 x 14 cm",
-      pages: 32,
+      format: "Tapa dura",
+      size: "21 x 21 cm",
+      pages: 20,
       paper: "Satinado color",
     },
     icon: "🦕",
-    coverImage: "/stories/dino-1.jpg",
-    previewImages: ["/stories/dino-1.jpg", "/stories/dino-1.jpg", "/stories/dino-1.jpg"],
+    coverImage: "/stories/valentin-noche-dinosaurios/cover.png",
+    previewImages: [
+      "/stories/valentin-noche-dinosaurios/spread-01-02.png",
+      "/stories/valentin-noche-dinosaurios/spread-09-10.png",
+      "/stories/valentin-noche-dinosaurios/spread-19-20.png",
+    ],
     themes: [
-      { icon: Smile, label: "Diversión", description: "Aprender jugando" },
-      { icon: Heart, label: "Empatía", description: "Entender a los demás" },
-      { icon: Shield, label: "Aventura", description: "Explorar mundos nuevos" },
+      { icon: Heart, label: "Calma", description: "Dormir con más seguridad" },
+      { icon: Shield, label: "Valentía", description: "Animarse de a poquito" },
+      { icon: Smile, label: "Acompañamiento", description: "Sentirse contenido" },
     ],
     specs: {
       dimensions: "21 x 21 cm",
       paper: "Premium 170g",
       binding: "Tapa dura acolchada",
     },
-    reviews: [{ user: "Pedro S.", rating: 5, comment: "Mi nieto no lo suelta.", date: "Hace 1 día" }],
+    reviews: [{ user: "Pedro S.", rating: 5, comment: "La tapa ya se siente cálida y acompañante.", date: "Hace 1 día" }],
     educational: {
       vocabulary: [
-        { term: "Paleontólogo", definition: "Científico que estudia los fósiles." },
-        { term: "Prehistórico", definition: "De una época muy, muy antigua." },
+        { term: "Valentía", definition: "Animarse incluso cuando algo da un poco de miedo." },
+        { term: "Calma", definition: "Respirar despacito hasta sentirse mejor." },
       ],
       textByLevel: {
-        basic: "¡Mira, un dinosaurio! Es muy grande y hace Roar. Es amigo de Juan.",
+        basic: "Valentín abraza a Dino y aprende que puede sentirse valiente de a poquito.",
         intermediate:
-          "En la tierra de los dinosaurios, Juan encuentra a un T-Rex. No da miedo, ¡solo quiere jugar al escondite!",
+          "Con la ayuda de su amigo Dino, Valentín descubre que la noche puede sentirse tranquila y segura.",
         advanced:
-          "Viajando a través de las eras hasta el período Cretácico, nuestro intrépido explorador descubre que la convivencia con los saurios gigantes requiere paciencia y comprensión.",
+          "A través de una aventura nocturna suave y mágica, Valentín aprende que el miedo no desaparece de golpe, pero puede acompañarse con respiración, cariño y confianza.",
       },
     },
     mockStatus: "example",
@@ -433,7 +437,7 @@ export const storyMocks: StoryMockContent[] = [
     printPriceArs: 29990,
     printSpecs: {
       format: "Tapa blanda",
-      size: "21 x 14 cm",
+      size: "21 x 21 cm",
       pages: 32,
       paper: "Satinado color",
     },
@@ -492,7 +496,7 @@ export const storyMocks: StoryMockContent[] = [
     printPriceArs: 29990,
     printSpecs: {
       format: "Tapa blanda",
-      size: "21 x 14 cm",
+      size: "21 x 21 cm",
       pages: 32,
       paper: "Satinado color",
     },

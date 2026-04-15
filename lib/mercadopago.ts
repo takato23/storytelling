@@ -1,4 +1,4 @@
-import { getMercadoPagoConfig } from "@/lib/config";
+import { getEnv, getMercadoPagoConfig } from "@/lib/config";
 
 type MpMetadata = Record<string, string | number | boolean | null | undefined>;
 
@@ -17,7 +17,7 @@ function getWebhookUrl(baseUrl: string) {
 }
 
 export function getCheckoutProvider(): "mercadopago" | "stripe" {
-  return "mercadopago";
+  return getEnv().checkoutProvider;
 }
 
 export interface MercadoPagoPreferenceInput {

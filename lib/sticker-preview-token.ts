@@ -25,7 +25,11 @@ function fromBase64Url(value: string) {
 
 function getStickerPreviewSigningSecret() {
   const env = getEnv();
-  return env.SUPABASE_SERVICE_ROLE_KEY ?? env.googleAiApiKey ?? env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? null;
+  const secret = env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!secret) {
+    throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY for sticker preview token signing");
+  }
+  return secret;
 }
 
 function signEncodedPayload(encodedPayload: string) {

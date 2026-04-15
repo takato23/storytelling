@@ -15,6 +15,7 @@ import { CharacterStep } from "@/components/story-wizard/CharacterStep"
 import { StorySelectionStep } from "@/components/story-wizard/StorySelectionStep"
 import { PreviewStep } from "@/components/story-wizard/PreviewStep"
 import { StepIndicator } from "@/components/story-wizard/StepIndicator"
+import { ChildPhotoConsent, buildConsentPayload } from "@/components/privacy/ChildPhotoConsent"
 import { captureEvent } from "@/lib/analytics/events"
 
 interface ChildFeatures {
@@ -23,8 +24,29 @@ interface ChildFeatures {
 }
 
 interface PreviewPayload {
-    imageUrl: string
-    sceneText: string
+    previewSessionId: string
+    status?: "queued" | "processing" | "completed" | "failed"
+    progress?: {
+        completedPages: number
+        totalPages: number
+    }
+    imageUrl: string | null
+    sceneText: string | null
+    imageProvider?: "gemini" | "fallback" | null
+    imageModel?: string | null
+    generationMode?: string | null
+    pages: Array<{
+        sceneId: string
+        pageNumber: number
+        title: string
+        text: string
+        imageUrl: string
+        storage: {
+            bucket: string
+            path: string
+        }
+    }>
+    previewBundle: Record<string, unknown>
 }
 
 interface WizardSavedState {
@@ -34,6 +56,7 @@ interface WizardSavedState {
     childGender?: string
     selectedStory?: string | null
     readingLevel?: ReadingLevel
+    previewSessionId?: string | null
 }
 
 const STEPS = [
@@ -43,6 +66,8 @@ const STEPS = [
     { id: 4, title: "Vista previa", icon: Eye, description: "Revisa y pasa al checkout" },
 ]
 const MAX_PREVIEW_ATTEMPTS = 2
+const NATIVE_SUPPORTED_UPLOAD_TYPES = new Set(["image/jpeg", "image/png", "image/webp"])
+const WIZARD_STATE_STORAGE_KEY = "storymagic_wizard_state"
 
 async function fileToDataUrl(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -51,6 +76,52 @@ async function fileToDataUrl(file: File): Promise<string> {
         reader.onerror = () => reject(new Error("No se pudo leer la imagen"))
         reader.readAsDataURL(file)
     })
+}
+
+async function convertImageFileForUpload(file: File): Promise<File> {
+    if (NATIVE_SUPPORTED_UPLOAD_TYPES.has(file.type)) {
+        return file
+    }
+
+    const objectUrl = URL.createObjectURL(file)
+
+    try {
+        const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const nextImage = new window.Image()
+            nextImage.onload = () => resolve(nextImage)
+            nextImage.onerror = () => reject(new Error("No se pudo leer la imagen seleccionada."))
+            nextImage.src = objectUrl
+        })
+
+        const canvas = document.createElement("canvas")
+        canvas.width = image.naturalWidth
+        canvas.height = image.naturalHeight
+
+        const context = canvas.getContext("2d")
+        if (!context) {
+            throw new Error("No se pudo preparar la imagen para personalizar.")
+        }
+
+        context.drawImage(image, 0, 0, canvas.width, canvas.height)
+
+        const convertedBlob = await new Promise<Blob>((resolve, reject) => {
+            canvas.toBlob((blob) => {
+                if (!blob) {
+                    reject(new Error("No se pudo convertir la foto a un formato compatible."))
+                    return
+                }
+                resolve(blob)
+            }, "image/jpeg", 0.92)
+        })
+
+        const normalizedName = file.name.replace(/\.[^.]+$/, "") || "photo"
+        return new File([convertedBlob], `${normalizedName}.jpg`, {
+            type: "image/jpeg",
+            lastModified: file.lastModified,
+        })
+    } finally {
+        URL.revokeObjectURL(objectUrl)
+    }
 }
 
 function StoryWizardContent() {
@@ -64,15 +135,17 @@ function StoryWizardContent() {
     const [childAge, setChildAge] = useState(6)
     const [childGender, setChildGender] = useState("neutral")
     const [selectedStory, setSelectedStory] = useState<string | null>(initialStory)
-    const [selectedStyle] = useState<string | null>("pixar")
+    const [selectedStyle] = useState<string | null>("cinematic-3d")
     const [readingLevel, setReadingLevel] = useState<ReadingLevel>("intermediate")
 
     const [childFeatures, setChildFeatures] = useState<ChildFeatures | null>(null)
+    const [photoConsent, setPhotoConsent] = useState(false)
     const [isAnalyzing, setIsAnalyzing] = useState(false)
     const [isGenerating, setIsGenerating] = useState(false)
     const [generatedPreview, setGeneratedPreview] = useState<PreviewPayload | null>(null)
     const [previewError, setPreviewError] = useState<string | null>(null)
     const [previewAttemptsRemaining, setPreviewAttemptsRemaining] = useState(MAX_PREVIEW_ATTEMPTS)
+    const [activePreviewSessionId, setActivePreviewSessionId] = useState<string | null>(null)
 
     const [printConfig, setPrintConfig] = useState<PrintConfig>(DEFAULT_PRINT_CONFIG)
 
@@ -84,18 +157,27 @@ function StoryWizardContent() {
     )
     const isPreviewStep = currentStep === 4
 
+    const clearWizardState = useCallback(() => {
+        localStorage.removeItem(WIZARD_STATE_STORAGE_KEY)
+    }, [])
+
     useEffect(() => {
-        const savedState = localStorage.getItem("storymagic_wizard_state")
+        const savedState = localStorage.getItem(WIZARD_STATE_STORAGE_KEY)
         if (!savedState) return
 
         try {
             const parsed: WizardSavedState = JSON.parse(savedState)
-            if (parsed.step && parsed.step >= 1 && parsed.step <= STEPS.length) setCurrentStep(parsed.step)
             if (parsed.childName) setChildName(parsed.childName)
             if (parsed.childAge) setChildAge(parsed.childAge)
             if (parsed.childGender) setChildGender(parsed.childGender)
             if (parsed.selectedStory) setSelectedStory(resolveStoryIdFromParam(parsed.selectedStory))
             if (parsed.readingLevel) setReadingLevel(parsed.readingLevel)
+            if (parsed.previewSessionId && parsed.selectedStory) {
+                setCurrentStep(4)
+                setActivePreviewSessionId(parsed.previewSessionId)
+            } else {
+                setCurrentStep(1)
+            }
         } catch {
             // Ignore malformed local state
         }
@@ -109,15 +191,36 @@ function StoryWizardContent() {
             childGender,
             selectedStory,
             readingLevel,
+            previewSessionId: activePreviewSessionId ?? generatedPreview?.previewSessionId ?? null,
         }
-        localStorage.setItem("storymagic_wizard_state", JSON.stringify(state))
-    }, [currentStep, childName, childAge, childGender, selectedStory, readingLevel])
+        localStorage.setItem(WIZARD_STATE_STORAGE_KEY, JSON.stringify(state))
+    }, [currentStep, childName, childAge, childGender, selectedStory, readingLevel, activePreviewSessionId, generatedPreview?.previewSessionId])
+
+    useEffect(() => {
+        const hasProgress = Boolean(image || childName)
+        if (!hasProgress) return
+
+        const handler = (e: BeforeUnloadEvent) => {
+            e.preventDefault()
+            e.returnValue = ""
+        }
+        window.addEventListener("beforeunload", handler)
+        return () => window.removeEventListener("beforeunload", handler)
+    }, [image, childName])
 
     useEffect(() => {
         setGeneratedPreview(null)
         setPreviewError(null)
         setPreviewAttemptsRemaining(MAX_PREVIEW_ATTEMPTS)
+        setActivePreviewSessionId(null)
     }, [selectedStory])
+
+    useEffect(() => {
+        setGeneratedPreview(null)
+        setPreviewError(null)
+        setPreviewAttemptsRemaining(MAX_PREVIEW_ATTEMPTS)
+        setActivePreviewSessionId(null)
+    }, [childName, childAge, childGender, readingLevel])
 
     useEffect(() => {
         captureEvent("wizard_step_view", {
@@ -128,19 +231,25 @@ function StoryWizardContent() {
     }, [currentStep, activeStep])
 
     const handleImageSelect = async (file: File | null) => {
-        setImage(file)
-        setGeneratedPreview(null)
-        setPreviewError(null)
-        setPreviewAttemptsRemaining(MAX_PREVIEW_ATTEMPTS)
-
         if (!file) {
+            setImage(null)
             setChildFeatures(null)
+            setGeneratedPreview(null)
+            setPreviewError(null)
+            setPreviewAttemptsRemaining(MAX_PREVIEW_ATTEMPTS)
+            setActivePreviewSessionId(null)
             return
         }
 
+        setPreviewError(null)
+        setGeneratedPreview(null)
+        setPreviewAttemptsRemaining(MAX_PREVIEW_ATTEMPTS)
+        setActivePreviewSessionId(null)
         setIsAnalyzing(true)
         try {
-            const imageBase64 = await fileToDataUrl(file)
+            const normalizedFile = await convertImageFileForUpload(file)
+            setImage(normalizedFile)
+            const imageBase64 = await fileToDataUrl(normalizedFile)
             const response = await fetch("/api/personalize", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -158,6 +267,9 @@ function StoryWizardContent() {
             }
         } catch (error) {
             console.error("Analyze failed", error)
+            setImage(null)
+            setChildFeatures(null)
+            setPreviewError(error instanceof Error ? error.message : "No pudimos procesar la foto.")
         } finally {
             setIsAnalyzing(false)
         }
@@ -166,6 +278,11 @@ function StoryWizardContent() {
     const generatePreviewImage = useCallback(async () => {
         if (!image || !selectedStory) return
         if (previewAttemptsRemaining <= 0) return
+        const consentPayload = buildConsentPayload(photoConsent)
+        if (!consentPayload) {
+            setPreviewError("Necesitamos tu consentimiento para usar la foto antes de generar la preview.")
+            return
+        }
 
         const nextAttempt = Math.max(
             1,
@@ -184,10 +301,12 @@ function StoryWizardContent() {
                     action: "generate",
                     imageBase64,
                     bookId: selectedStory,
+                    childName,
                     childFeatures: childFeatures ?? {
                         approximateAge: childAge,
                         gender: childGender,
                     },
+                    consent: consentPayload,
                 }),
             })
             const payload = await response.json()
@@ -203,13 +322,42 @@ function StoryWizardContent() {
             }
 
             if (payload.success) {
-                setGeneratedPreview({
+                const nextPreview: PreviewPayload = {
+                    previewSessionId: payload.previewSessionId,
+                    status:
+                        payload.status === "queued" ||
+                        payload.status === "processing" ||
+                        payload.status === "completed" ||
+                        payload.status === "failed"
+                            ? payload.status
+                            : undefined,
+                    progress: payload.progress,
                     imageUrl: payload.imageUrl,
                     sceneText: payload.sceneText,
-                })
+                    imageProvider:
+                        payload.image_provider === "gemini"
+                            ? "gemini"
+                            : payload.image_provider === "fallback"
+                                ? "fallback"
+                                : null,
+                    imageModel: typeof payload.image_model === "string" ? payload.image_model : null,
+                    generationMode: typeof payload.generation_mode === "string" ? payload.generation_mode : null,
+                    pages: Array.isArray(payload.pages) ? payload.pages as PreviewPayload["pages"] : [],
+                    previewBundle:
+                        payload.preview_bundle && typeof payload.preview_bundle === "object"
+                            ? payload.preview_bundle
+                            : {},
+                }
+                setGeneratedPreview(nextPreview)
+                if (payload.status === "failed") {
+                    setPreviewError(payload.errorMessage ?? "No pudimos completar la preview.")
+                    setActivePreviewSessionId(null)
+                } else {
+                    setActivePreviewSessionId(payload.previewSessionId ?? null)
+                }
                 captureEvent("preview_generated", {
                     story_id: selectedStory,
-                    style_id: selectedStyle ?? "pixar",
+                    style_id: selectedStyle ?? "cinematic-3d",
                     preview_attempt: nextAttempt,
                     preview_attempts_remaining: previewAttemptsRemaining - 1,
                 })
@@ -227,25 +375,121 @@ function StoryWizardContent() {
         childFeatures,
         childAge,
         childGender,
+        childName,
         selectedStyle,
         previewAttemptsRemaining,
+        photoConsent,
         router,
     ])
 
     useEffect(() => {
         if (currentStep !== 4) return
-        if (generatedPreview || isGenerating) return
+        if ((generatedPreview && generatedPreview.status === "completed") || isGenerating) return
         if (!image || !selectedStory) return
+        if (activePreviewSessionId) return
         if (previewAttemptsRemaining <= 0) return
         void generatePreviewImage()
-    }, [currentStep, generatedPreview, isGenerating, image, selectedStory, previewAttemptsRemaining, generatePreviewImage])
+    }, [currentStep, generatedPreview, isGenerating, image, selectedStory, activePreviewSessionId, previewAttemptsRemaining, generatePreviewImage])
+
+    useEffect(() => {
+        if (currentStep !== 4) return
+        if (generatedPreview || activePreviewSessionId) return
+
+        try {
+            const savedState = localStorage.getItem(WIZARD_STATE_STORAGE_KEY)
+            if (!savedState) return
+            const parsed: WizardSavedState = JSON.parse(savedState)
+            if (parsed.previewSessionId) {
+                setActivePreviewSessionId(parsed.previewSessionId)
+            }
+        } catch {
+            // Ignore malformed local state.
+        }
+    }, [currentStep, generatedPreview, activePreviewSessionId])
+
+    useEffect(() => {
+        if (!activePreviewSessionId) return
+        if (generatedPreview?.status === "completed" || generatedPreview?.status === "failed") return
+
+        let cancelled = false
+        setIsGenerating(true)
+
+        const tick = async () => {
+            try {
+                const response = await fetch(`/api/personalize?previewSessionId=${encodeURIComponent(activePreviewSessionId)}`)
+                const payload = await response.json()
+                if (cancelled) return
+
+                if (!response.ok) {
+                    throw new Error(payload.message ?? "No pudimos completar la preview.")
+                }
+
+                const nextPreview: PreviewPayload = {
+                    previewSessionId: payload.previewSessionId,
+                    status:
+                        payload.status === "queued" ||
+                        payload.status === "processing" ||
+                        payload.status === "completed" ||
+                        payload.status === "failed"
+                            ? payload.status
+                            : undefined,
+                    progress: payload.progress,
+                    imageUrl: payload.imageUrl,
+                    sceneText: payload.sceneText,
+                    imageProvider:
+                        payload.image_provider === "gemini"
+                            ? "gemini"
+                            : payload.image_provider === "fallback"
+                                ? "fallback"
+                                : null,
+                    imageModel: typeof payload.image_model === "string" ? payload.image_model : null,
+                    generationMode: typeof payload.generation_mode === "string" ? payload.generation_mode : null,
+                    pages: Array.isArray(payload.pages) ? payload.pages as PreviewPayload["pages"] : [],
+                    previewBundle:
+                        payload.preview_bundle && typeof payload.preview_bundle === "object"
+                            ? payload.preview_bundle
+                            : {},
+                }
+
+                setGeneratedPreview(nextPreview)
+
+                if (payload.status === "completed") {
+                    setIsGenerating(false)
+                    setActivePreviewSessionId(null)
+                    return
+                }
+
+                if (payload.status === "failed") {
+                    setPreviewError(payload.errorMessage ?? "No pudimos completar la preview.")
+                    setIsGenerating(false)
+                    setActivePreviewSessionId(null)
+                    return
+                }
+
+                window.setTimeout(tick, 1200)
+            } catch (error) {
+                if (cancelled) return
+                setPreviewError(error instanceof Error ? error.message : "No pudimos completar la preview.")
+                setIsGenerating(false)
+                setActivePreviewSessionId(null)
+            }
+        }
+
+        const timer = window.setTimeout(tick, 1200)
+
+        return () => {
+            cancelled = true
+            window.clearTimeout(timer)
+        }
+    }, [activePreviewSessionId, generatedPreview?.status])
 
     const blockingReason = useMemo(() => {
         if (currentStep === 1 && !image) return "missing_photo"
+        if (currentStep === 1 && image && !photoConsent) return "missing_consent"
         if (currentStep === 2 && childName.trim().length < 2) return "missing_child_name"
         if (currentStep === 3 && !selectedStory) return "missing_story"
         return null
-    }, [currentStep, image, childName, selectedStory])
+    }, [currentStep, image, photoConsent, childName, selectedStory])
 
     useEffect(() => {
         if (!blockingReason) return
@@ -311,6 +555,7 @@ function StoryWizardContent() {
                             <div className="flex items-center justify-between gap-3 sm:justify-start">
                                 <Link
                                     href="/"
+                                    onClick={clearWizardState}
                                     className="play-pill group flex items-center gap-2 px-4 py-2.5"
                                 >
                                     <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
@@ -356,12 +601,22 @@ function StoryWizardContent() {
                                 transition={{ duration: 0.32 }}
                             >
                                 {currentStep === 1 && (
-                                    <PhotoUploadStep
-                                        image={image}
-                                        onImageSelect={handleImageSelect}
-                                        childFeatures={childFeatures}
-                                        isAnalyzing={isAnalyzing}
-                                    />
+                                    <>
+                                        <PhotoUploadStep
+                                            image={image}
+                                            onImageSelect={handleImageSelect}
+                                            childFeatures={childFeatures}
+                                            isAnalyzing={isAnalyzing}
+                                        />
+                                        {image && (
+                                            <div className="mx-auto mt-6 max-w-2xl">
+                                                <ChildPhotoConsent
+                                                    defaultChecked={photoConsent}
+                                                    onChange={setPhotoConsent}
+                                                />
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                                 {currentStep === 2 && (
                                     <CharacterStep

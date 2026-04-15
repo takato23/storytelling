@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { handleRouteError } from "@/lib/api";
 import { ApiError, requireAuthenticatedUser } from "@/lib/auth";
-import { storyToPdfLines } from "@/lib/digital-story";
+import { getValentinDinoPersonalizedTitle, isValentinDinoStoryId } from "@/lib/books/valentin-dino-package";
 import { rowsToStoryPages } from "@/lib/generated-pages";
-import { buildSimplePdf } from "@/lib/pdf";
+import { buildIllustratedStoryPdf, buildImageOnlyPdf } from "@/lib/story-pdf";
+import { resolveStorageUrlForClient } from "@/lib/storage";
 import { createSupabaseAdminClient } from "@/lib/supabase";
 
 type RouteContext = {
@@ -66,21 +67,40 @@ export async function GET(_request: Request, context: RouteContext) {
       ? await adminClient.from("stories").select("title").eq("id", String(item.story_id)).maybeSingle()
       : { data: null };
 
-    const storyTitle = (story?.title ?? "Historia personalizada").toString();
+    const { data: personalization } = await adminClient
+      .from("personalizations")
+      .select("child_profile")
+      .eq("order_id", id)
+      .maybeSingle();
+
+    const childProfile = personalization?.child_profile as Record<string, unknown> | null;
+    const childName = String(childProfile?.name ?? childProfile?.child_name ?? "Peque aventurero");
+    const storyTitle = isValentinDinoStoryId(item?.story_id ? String(item.story_id) : null)
+      ? getValentinDinoPersonalizedTitle(childName)
+      : (story?.title ?? "Historia personalizada").toString();
     if (!generatedRows || generatedRows.length === 0) {
       throw new ApiError(409, "digital_not_ready", "Digital asset not ready yet");
     }
 
-    const pages = rowsToStoryPages(generatedRows);
+    const resolvedRows = await Promise.all(
+      (generatedRows ?? []).map(async (row) => ({
+        ...row,
+        image_url: await resolveStorageUrlForClient(adminClient, row.image_url ? String(row.image_url) : null),
+      })),
+    );
 
-    const lines = [
-      `Orden: ${String(order.id).slice(0, 8)}`,
-      `Fecha: ${new Date(String(order.created_at)).toLocaleDateString("es-AR")}`,
-      "",
-      ...storyToPdfLines(pages),
-    ];
+    const pages = rowsToStoryPages(resolvedRows);
+    const shouldUseImageOnlyPdf = pages.some((page) => page.layoutVariant && page.layoutVariant !== "standard");
 
-    const pdfBytes = buildSimplePdf(`StoryMagic | ${storyTitle}`, lines);
+    const pdfBytes = shouldUseImageOnlyPdf
+      ? await buildImageOnlyPdf({
+          title: storyTitle,
+          pages,
+        })
+      : await buildIllustratedStoryPdf({
+          title: storyTitle,
+          pages,
+        });
 
     return new NextResponse(new Uint8Array(pdfBytes), {
       headers: {
