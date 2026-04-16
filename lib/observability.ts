@@ -7,6 +7,7 @@ interface LogContext {
   route: string;
   user_id?: string;
   order_id?: string;
+  is_guest?: boolean;
 }
 
 function nowIso() {

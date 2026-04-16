@@ -12,8 +12,8 @@ interface FAQItem {
 
 const FAQ_ITEMS: FAQItem[] = [
     {
-        question: "¿Cómo funciona la tecnología de IA?",
-        answer: "Tomamos la foto, adaptamos los rasgos principales y generamos una versión ilustrada consistente con el estilo elegido."
+        question: "¿Cómo se personaliza el libro con la foto?",
+        answer: "Tomamos la foto, adaptamos los rasgos principales y creamos ilustraciones personalizadas consistentes con el estilo del cuento."
     },
     {
         question: "¿Cuánto tiempo tarda en crearse mi libro?",

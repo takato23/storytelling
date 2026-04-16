@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { handleRouteError } from "@/lib/api";
-import { requireAuthenticatedUser } from "@/lib/auth";
+import { getOptionalAuthenticatedUser } from "@/lib/auth";
 import { getCheckoutAvailability } from "@/lib/checkout-status";
+import { resolveCheckoutIdentity } from "@/lib/guest-checkout";
 import { getRequestId, logEvent, setRequestIdHeader } from "@/lib/observability";
 import { createOrderDraft } from "@/lib/orders";
 import { enforceRateLimit } from "@/lib/rate-limit";
@@ -25,8 +26,7 @@ export async function POST(request: Request) {
     const limited = enforceRateLimit(request, { key: route, limit: 10, windowMs: 60_000 });
     if (limited) return setRequestIdHeader(limited, requestId);
 
-    const { user } = await requireAuthenticatedUser();
-    logEvent("info", "orders_create.request", { request_id: requestId, route, user_id: user.id });
+    const { user } = await getOptionalAuthenticatedUser();
     const checkoutAvailability = getCheckoutAvailability();
     if (!checkoutAvailability.enabled) {
       const response = NextResponse.json(
@@ -44,6 +44,20 @@ export async function POST(request: Request) {
     const payload = CreateOrderRequestSchema.parse(await request.json());
 
     const adminClient = createSupabaseAdminClient();
+
+    // Resolve checkout identity (authenticated user or guest)
+    const identity = await resolveCheckoutIdentity(adminClient, {
+      authenticatedUserId: user?.id,
+      customerEmail: payload.customer_email,
+    });
+
+    logEvent("info", "orders_create.request", {
+      request_id: requestId,
+      route,
+      user_id: identity.userId ?? undefined,
+      is_guest: identity.isGuest,
+    });
+
     const story = await getStoryPricing(adminClient, payload.story_id);
 
     const fx = await getLatestFxUsdArs(adminClient);
@@ -69,7 +83,7 @@ export async function POST(request: Request) {
     });
 
     const orderId = await createOrderDraft(adminClient, {
-      userId: user.id,
+      userId: identity.userId,
       storyId: payload.story_id,
       format: payload.format,
       currency: payload.currency,
@@ -81,14 +95,16 @@ export async function POST(request: Request) {
       printOptions: payload.print_options,
       childProfile: payload.child_profile,
       personalizationPayload: payload.personalization_payload,
+      customerEmail: identity.customerEmail,
       shippingAddress: payload.shipping_address,
     });
 
     logEvent("info", "orders_create.created", {
       request_id: requestId,
       route,
-      user_id: user.id,
+      user_id: identity.userId ?? undefined,
       order_id: orderId,
+      is_guest: identity.isGuest,
     });
 
     const response = NextResponse.json(

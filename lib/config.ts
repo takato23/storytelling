@@ -97,7 +97,7 @@ export function getEnv() {
     allowLocalPreviewBypass:
       env.ALLOW_LOCAL_PREVIEW_BYPASS === "true" || env.NODE_ENV !== "production",
     freePreviewCreditsDefault: env.FREE_PREVIEW_CREDITS_DEFAULT ?? 2,
-    previewImageEstimatedCostUsd: env.PREVIEW_IMAGE_ESTIMATED_COST_USD ?? 0.05,
+    previewImageEstimatedCostUsd: env.PREVIEW_IMAGE_ESTIMATED_COST_USD ?? 0.04,
   };
 }
 

@@ -46,3 +46,10 @@ next-env.d.ts
 
 # scratch test outputs
 tmp-*.png
+
+# Claude Code
+.claude/
+
+# Large binary assets not used at build time
+assets/Assets Dinolibro/
+

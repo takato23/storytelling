@@ -32,6 +32,15 @@ function hasAdminClaim(user: User): boolean {
   return roleFromAppMeta === "admin" || roleFromUserMeta === "admin";
 }
 
+export async function getOptionalAuthenticatedUser() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return { user: user ?? null, supabase };
+}
+
 export async function requireAdminUser() {
   const { user, supabase } = await requireAuthenticatedUser();
 

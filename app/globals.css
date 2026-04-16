@@ -575,6 +575,25 @@ img {
   font-size: clamp(3rem, 2.2rem + 3.4vw, 5.7rem);
 }
 
+/* Image-based logo: keep width auto so the natural aspect ratio is
+ * preserved while the height scales fluidly across breakpoints. */
+.nido-wordmark-image {
+  width: auto;
+  display: block;
+}
+
+.nido-wordmark-image-nav {
+  height: clamp(36px, 2.5rem + 0.6vw, 52px);
+}
+
+.nido-wordmark-image-footer {
+  height: clamp(44px, 3rem + 0.6vw, 60px);
+}
+
+.nido-wordmark-image-hero {
+  height: clamp(80px, 4.5rem + 3vw, 132px);
+}
+
 .nido-wordmark-tagline {
   margin-top: 0.4rem;
   color: var(--nido-muted);

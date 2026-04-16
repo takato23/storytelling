@@ -108,6 +108,7 @@ export default function AdminPrintJobsPage() {
   const [transitioningId, setTransitioningId] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [customGeneratingId, setCustomGeneratingId] = useState<string | null>(null);
+  const [approvingPageId, setApprovingPageId] = useState<string | null>(null);
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [targetByJob, setTargetByJob] = useState<Record<string, PrintJobStatus>>({});
   const [trackingByJob, setTrackingByJob] = useState<Record<string, string>>({});
@@ -183,8 +184,8 @@ export default function AdminPrintJobsPage() {
     setTransitioningId(job.id);
     setError(null);
     try {
-      const response = await fetch(`/api/admin/print-jobs/${job.id}/transition`, {
-        method: "POST",
+      const response = await fetch(`/api/admin/print-jobs/${job.id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to_status: target,
@@ -208,14 +209,27 @@ export default function AdminPrintJobsPage() {
     setRetryingId(pageNumber ? `${job.id}:${pageNumber}` : job.id);
     setError(null);
     try {
-      const response = await fetch(`/api/admin/print-jobs/${job.id}/retry-pages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(pageNumber ? { page_number: pageNumber } : {}),
-      });
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload.message ?? "No se pudieron reintentar las páginas.");
+      if (pageNumber) {
+        // Single page regeneration
+        const response = await fetch(`/api/admin/print-jobs/${job.id}/pages/${pageNumber}/regenerate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.message ?? "No se pudo regenerar la página.");
+      } else {
+        // Bulk: retry all failed pages sequentially
+        const failedPages = job.qa_summary.pages.filter((p) => p.status === "failed");
+        for (const page of failedPages) {
+          const response = await fetch(`/api/admin/print-jobs/${job.id}/pages/${page.page_number}/regenerate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({}),
+          });
+          const payload = await response.json();
+          if (!response.ok) throw new Error(payload.message ?? `No se pudo regenerar la página ${page.page_number}.`);
+        }
       }
       await loadJobs();
     } catch (retryError) {
@@ -237,12 +251,11 @@ export default function AdminPrintJobsPage() {
     setCustomGeneratingId(key);
     setError(null);
     try {
-      const response = await fetch(`/api/admin/print-jobs/${job.id}/custom-page`, {
+      const response = await fetch(`/api/admin/print-jobs/${job.id}/pages/${pageNumber}/regenerate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          page_number: pageNumber,
-          prompt,
+          override_prompt: prompt,
         }),
       });
       const payload = await response.json();
@@ -255,6 +268,29 @@ export default function AdminPrintJobsPage() {
       setError(message);
     } finally {
       setCustomGeneratingId(null);
+    }
+  }
+
+  async function handlePageAction(job: PrintJobRow, pageNumber: number, action: "approve" | "reject") {
+    const key = `${job.id}:${pageNumber}:${action}`;
+    setApprovingPageId(key);
+    setError(null);
+    try {
+      const response = await fetch(`/api/admin/print-jobs/${job.id}/pages/${pageNumber}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.message ?? `No se pudo ${action === "approve" ? "aprobar" : "rechazar"} la página.`);
+      }
+      await loadJobs();
+    } catch (actionError) {
+      const message = actionError instanceof Error ? actionError.message : "Error en la acción.";
+      setError(message);
+    } finally {
+      setApprovingPageId(null);
     }
   }
 
@@ -463,6 +499,31 @@ export default function AdminPrintJobsPage() {
                                   </div>
 
                                   <div className="mt-3 space-y-2">
+                                    {page.status === "ready" && (
+                                      <div className="flex gap-2">
+                                        <button
+                                          onClick={() => void handlePageAction(job, page.page_number, "approve")}
+                                          disabled={approvingPageId === `${job.id}:${page.page_number}:approve`}
+                                          className="flex-1 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2 py-1.5 text-[11px] font-semibold text-emerald-300 disabled:opacity-60"
+                                        >
+                                          {approvingPageId === `${job.id}:${page.page_number}:approve` ? "..." : "Aprobar"}
+                                        </button>
+                                        <button
+                                          onClick={() => void handlePageAction(job, page.page_number, "reject")}
+                                          disabled={approvingPageId === `${job.id}:${page.page_number}:reject`}
+                                          className="flex-1 rounded-lg border border-rose-500/20 bg-rose-500/10 px-2 py-1.5 text-[11px] font-semibold text-rose-300 disabled:opacity-60"
+                                        >
+                                          {approvingPageId === `${job.id}:${page.page_number}:reject` ? "..." : "Rechazar"}
+                                        </button>
+                                      </div>
+                                    )}
+                                    {page.status === "approved" && (
+                                      <div>
+                                        <span className="inline-block rounded-full bg-emerald-500/15 px-2 py-1 text-[11px] font-semibold text-emerald-300 ring-1 ring-emerald-500/20">
+                                          Aprobado
+                                        </span>
+                                      </div>
+                                    )}
                                     {page.status === "failed" && (
                                       <button
                                         onClick={() => void handleRetry(job, page.page_number)}

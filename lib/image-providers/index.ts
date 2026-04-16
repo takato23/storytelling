@@ -74,6 +74,8 @@ export interface RouterOptions {
   provider?: ImageProviderName;
   /** Disable the fallback chain (return the first provider's result even on failure). */
   disableFallback?: boolean;
+  /** Profile-aware routing: "preview" uses faster provider (Gemini), "print" uses primary (Seedream). */
+  profile?: "preview" | "print";
 }
 
 /**
@@ -84,7 +86,16 @@ export async function generateImage(
   input: GenerateImageInput,
   options: RouterOptions = {},
 ): Promise<GenerateImageResult> {
-  const chain = resolveProviderChain(options.provider);
+  // Profile-aware routing: preview uses faster provider (Gemini), print uses primary (Seedream)
+  let primaryOverride = options.provider;
+  if (options.profile === "preview") {
+    console.log("[image-router] profile=preview, using gemini for faster generation (1-3s vs 10-15s)");
+    primaryOverride = "gemini";
+  } else if (options.profile === "print") {
+    console.log("[image-router] profile=print, using configured primary provider (seedream)");
+  }
+
+  const chain = resolveProviderChain(primaryOverride);
   const effectiveChain = options.disableFallback ? chain.slice(0, 1) : chain;
 
   let lastResult: GenerateImageResult | null = null;

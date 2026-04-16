@@ -31,7 +31,7 @@ export async function insertOrderEvent(
 export async function createOrderDraft(
   adminClient: SupabaseClient,
   params: {
-    userId: string;
+    userId: string | null;
     storyId: string;
     format: OrderFormat;
     currency: Currency;
@@ -43,6 +43,7 @@ export async function createOrderDraft(
     printOptions: PrintOptions;
     childProfile: Record<string, unknown>;
     personalizationPayload: Record<string, unknown>;
+    customerEmail?: string | null;
     shippingAddress?: {
       recipientName: string;
       line1: string;
@@ -55,18 +56,27 @@ export async function createOrderDraft(
     };
   },
 ): Promise<string> {
+  const orderData: Record<string, unknown> = {
+    status: "draft",
+    currency: params.currency,
+    payment_provider: params.paymentProvider,
+    fx_rate_snapshot: params.fxRateSnapshot,
+    subtotal: params.subtotal,
+    shipping_fee: params.shippingFee,
+    total: params.total,
+  };
+
+  if (params.userId !== null) {
+    orderData.user_id = params.userId;
+  }
+
+  if (params.customerEmail) {
+    orderData.customer_email = params.customerEmail;
+  }
+
   const { data: order, error: orderError } = await adminClient
     .from("orders")
-    .insert({
-      user_id: params.userId,
-      status: "draft",
-      currency: params.currency,
-      payment_provider: params.paymentProvider,
-      fx_rate_snapshot: params.fxRateSnapshot,
-      subtotal: params.subtotal,
-      shipping_fee: params.shippingFee,
-      total: params.total,
-    })
+    .insert(orderData)
     .select("id")
     .single();
 

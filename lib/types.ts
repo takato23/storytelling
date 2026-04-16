@@ -41,6 +41,7 @@ export const CreateOrderRequestSchema = z
     currency: CurrencySchema,
     payment_provider: PaymentProviderSchema.default("mercadopago"),
     shipping_address: ShippingAddressSchema.optional(),
+    customer_email: z.string().email().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.format === "print" && !value.shipping_address) {
@@ -85,6 +86,7 @@ export const OrderQuoteRequestSchema = z
     }),
     shipping_address: ShippingAddressSchema.optional(),
     currency: CurrencySchema,
+    customer_email: z.string().email().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.format === "print" && !value.shipping_address) {

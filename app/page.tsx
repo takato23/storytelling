@@ -120,7 +120,7 @@ export default function Home() {
                   className="mb-4 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold tracking-wide text-white shadow-md"
                   style={{ background: "linear-gradient(135deg, var(--nido-peach, #f4845f), var(--nido-sage-strong, #6b9080), var(--nido-peach, #f4845f))", backgroundSize: "200% 200%", animation: prefersReduced ? "none" : "nido-gradient-shift 4s ease infinite" }}
                 >
-                  IA + tu foto = magia
+                  Tu foto + magia = un libro único
                 </motion.span>
 
                 <span className="nido-kicker mt-2 block">

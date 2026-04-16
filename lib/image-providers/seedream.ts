@@ -1,14 +1,13 @@
 /**
- * Seedream 4 / 4.5 provider adapter via fal.ai.
+ * Seedream 4.5 provider adapter via fal.ai.
  *
  * ByteDance's Seedream supports multi-reference image-to-image with
  * native 4K output and strong character consistency across scenes.
+ * v4.5 brings improved facial consistency (9.6/10) with Cross-Image Consistency Module.
  * Very competitive pricing (~$0.025–$0.04 / image).
  *
  * Model id is configurable via env:
- *   FAL_SEEDREAM_MODEL=fal-ai/bytedance/seedream/v4/edit        (default, multi-ref edit)
- *
- * If/when fal exposes newer variants (v4.5), override via env.
+ *   FAL_SEEDREAM_MODEL=fal-ai/bytedance/seedream/v4.5/edit       (default, multi-ref edit)
  */
 
 import { getFalConfig } from "@/lib/config";
@@ -27,7 +26,7 @@ interface SeedreamImageResult {
 function getModelId(override?: string): string {
   if (override) return override;
   const { seedreamModel } = getFalConfig();
-  return seedreamModel ?? "fal-ai/bytedance/seedream/v4/edit";
+  return seedreamModel ?? "fal-ai/bytedance/seedream/v4.5/edit";
 }
 
 /**
