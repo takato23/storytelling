@@ -14,12 +14,12 @@ type PageActionRequest = z.infer<typeof PageActionRequestSchema>;
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ jobId: string; pageNumber: string }> },
+  { params }: { params: Promise<{ id: string; pageNumber: string }> },
 ) {
   try {
     await requireAdminUser();
     const adminClient = createSupabaseAdminClient();
-    const { jobId, pageNumber } = await params;
+    const { id, pageNumber } = await params;
 
     const body = await request.json();
     const validationResult = PageActionRequestSchema.safeParse(body);
@@ -38,7 +38,7 @@ export async function PATCH(
     const { data: job, error: jobError } = await adminClient
       .from("print_jobs")
       .select("order_id")
-      .eq("id", jobId)
+      .eq("id", id)
       .maybeSingle();
 
     if (jobError || !job) {
@@ -92,7 +92,7 @@ export async function PATCH(
       note: note ?? null,
       payload: {
         page_number: pageNum,
-        print_job_id: jobId,
+        print_job_id: id,
       },
     });
 

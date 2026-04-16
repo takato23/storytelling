@@ -6,16 +6,16 @@ import { insertOrderEvent } from "@/lib/orders";
 import { PrintJobTransitionRequestSchema, VALID_PRINT_JOB_TRANSITIONS } from "@/lib/types";
 import type { PrintJobStatus } from "@/lib/types";
 
-export async function GET(request: Request, { params }: { params: Promise<{ jobId: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireAdminUser();
     const adminClient = createSupabaseAdminClient();
-    const { jobId } = await params;
+    const { id } = await params;
 
     const { data: job, error: jobError } = await adminClient
       .from("print_jobs")
       .select("id,order_id,status,tracking_number,sla_due_at,created_at,updated_at")
-      .eq("id", jobId)
+      .eq("id", id)
       .maybeSingle();
 
     if (jobError || !job) {
@@ -106,11 +106,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ jobI
   }
 }
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ jobId: string }> }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireAdminUser();
     const adminClient = createSupabaseAdminClient();
-    const { jobId } = await params;
+    const { id } = await params;
 
     const body = await request.json();
     const validatedBody = PrintJobTransitionRequestSchema.parse(body);
@@ -119,7 +119,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ jo
     const { data: job, error: jobError } = await adminClient
       .from("print_jobs")
       .select("id,order_id,status")
-      .eq("id", jobId)
+      .eq("id", id)
       .maybeSingle();
 
     if (jobError || !job) {
@@ -143,7 +143,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ jo
       updateData.tracking_number = validatedBody.tracking_number;
     }
 
-    const { error: updateError } = await adminClient.from("print_jobs").update(updateData).eq("id", jobId);
+    const { error: updateError } = await adminClient.from("print_jobs").update(updateData).eq("id", id);
 
     if (updateError) {
       throw new Error(updateError.message);
@@ -207,7 +207,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ jo
       toStatus: targetStatus,
       note: validatedBody.note ?? null,
       payload: {
-        print_job_id: jobId,
+        print_job_id: id,
         tracking_number: validatedBody.tracking_number ?? null,
       },
     });
@@ -216,7 +216,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ jo
     const { data: updatedJob, error: fetchError } = await adminClient
       .from("print_jobs")
       .select("id,order_id,status,tracking_number,sla_due_at,created_at,updated_at")
-      .eq("id", jobId)
+      .eq("id", id)
       .maybeSingle();
 
     if (fetchError || !updatedJob) {
